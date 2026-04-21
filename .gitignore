@@ -1,0 +1,28 @@
+exercise.pdf
+
+# Data — the CSVs are huge (~500 MB) and copyrighted; don't commit.
+data/*.csv
+data/*.zip
+
+# Generated outputs — regeneratable; keep the repo light.
+outputs/figures/*.png
+outputs/figures/*.pdf
+outputs/figures/*.svg
+outputs/results/*.csv
+outputs/results/*.json
+
+# Cached cleaned dataset
+data/*.parquet
+data/*.pkl
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
