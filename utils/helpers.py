@@ -217,3 +217,67 @@ def save_results(df: pd.DataFrame, name: str) -> Path:
     out = RESULTS_DIR / name
     df.to_csv(out, index=False)
     return out
+
+
+# =============================================================================
+# Feature-analysis helpers used by Q1 feature selection
+# =============================================================================
+def top_correlated_pairs(corr: pd.DataFrame, top_n: int = 20) -> pd.DataFrame:
+    """
+    Given a square correlation matrix, return the top_n pairs of distinct
+    features ranked by |r|, as a DataFrame with columns (feature_a,
+    feature_b, corr, abs_corr).
+
+    We take only the upper triangle to avoid (a,b)+(b,a) duplicates and to
+    skip the diagonal (r=1.0 self-correlation).
+    """
+    m = corr.where(np.triu(np.ones(corr.shape, dtype=bool), k=1))
+    pairs = (
+        m.stack()
+         .rename("corr")
+         .reset_index()
+         .rename(columns={"level_0": "feature_a", "level_1": "feature_b"})
+    )
+    pairs["abs_corr"] = pairs["corr"].abs()
+    return pairs.sort_values("abs_corr", ascending=False).head(top_n).reset_index(drop=True)
+
+
+def find_low_variance_features(
+    df: pd.DataFrame, threshold: float = 0.0
+) -> list[str]:
+    """
+    Return numeric columns whose variance is <= threshold.
+
+    A zero-variance column is constant — it carries no information and
+    must be removed before any model. A near-zero-variance column (tiny
+    threshold, e.g. 1e-6) is almost-constant; useful to catch the
+    bulk-rate columns in CIC-IDS-2017 which are near-zero for >99% of
+    rows.
+    """
+    numeric = df.select_dtypes(include=np.number)
+    variances = numeric.var(numeric_only=True)
+    return variances[variances <= threshold].index.tolist()
+
+
+def find_highly_correlated_features(
+    corr: pd.DataFrame, threshold: float = 0.95
+) -> list[str]:
+    """
+    Given a correlation matrix, return a set of features to DROP so that
+    no remaining pair has |r| > threshold.
+
+    Strategy: walk the upper triangle; for every pair above threshold,
+    mark the second column (by order in the matrix) for removal. This
+    keeps the first occurrence of each highly-correlated cluster and
+    drops its near-duplicates.
+    """
+    upper = corr.where(np.triu(np.ones(corr.shape, dtype=bool), k=1))
+    to_drop: set[str] = set()
+    for col in upper.columns:
+        partners = upper.index[upper[col].abs() > threshold].tolist()
+        for p in partners:
+            # keep p (the earlier column in the matrix), drop col
+            if p not in to_drop:
+                to_drop.add(col)
+                break
+    return sorted(to_drop)

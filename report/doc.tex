@@ -1,0 +1,1265 @@
+\documentclass[12pt,a4paper,twoside]{book}
+% Language setup for Greek and English
+\usepackage[english,greek]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1,LGR]{fontenc}
+% Font setup
+\usepackage{fontspec}
+\setmainfont{Linux Libertine O}[Scale=0.9]
+\setsansfont{Linux Biolinum}[Scale=0.9]
+\setmonofont{DejaVu Sans Mono}[Scale=0.9]
+% Other necessary packages
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{makeidx}
+\usepackage{multicol}
+\usepackage{multirow}
+\usepackage{adjustbox}
+\usepackage{amssymb}
+\usepackage{stackengine}
+\usepackage{ifthen}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+\usepackage{listings}
+\usepackage{parskip}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{cancel}
+\usepackage{pdfpages}
+\usepackage{titlesec}
+
+% Page & text layout
+\usepackage{geometry}
+\geometry{
+   a4paper,
+   top=2.5cm,
+   bottom=2.5cm,
+   left=2.5cm,
+   right=2.5cm
+}
+
+% Headers & footers
+\usepackage{fancyhdr}
+\pagestyle{fancyplain}
+\fancyhf{}
+
+\fancypagestyle{plain}{%
+    \fancyhf{}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+}
+
+\fancypagestyle{tocstyle}{%
+    \fancyhf{}
+    \fancyhead[LE]{\thepage}
+    \fancyhead[CE]{\leftmark}
+    \fancyhead[CO]{\rightmark}
+    \fancyhead[RO]{\thepage}
+    \renewcommand{\headrulewidth}{0pt}
+}
+
+\renewcommand{\sectionmark}[1]{\markboth{#1}{}}
+\renewcommand{\subsectionmark}[1]{\markright{#1}}
+
+\let\oldtableofcontents\tableofcontents
+\renewcommand{\tableofcontents}{%
+    \clearpage
+    \thispagestyle{empty}
+    \pagestyle{tocstyle}
+    \oldtableofcontents
+    \clearpage
+    \pagestyle{fancy}
+    \fancyhead[LE]{\thepage}
+    \fancyhead[CE]{\leftmark}
+    \fancyhead[RE]{ΚΕΦ. \thechapter}
+
+    \fancyhead[LO]{\thesection}
+    \fancyhead[CO]{\rightmark}
+    \fancyhead[RO]{\thepage}
+
+    \renewcommand{\headrulewidth}{0.4pt}
+
+    \renewcommand{\chaptermark}[1]{\markboth{##1}{}}
+    \renewcommand{\sectionmark}[1]{%
+        \markright{##1}%
+    }
+    \renewcommand{\subsectionmark}[1]{}
+}
+
+\makeatletter
+\renewcommand\sectionmark[1]{%
+  \markright{%
+    \ifnum \c@secnumdepth >\z@
+      \thesection\quad
+    \fi
+    #1}}
+\makeatother
+
+\addtocontents{toc}{\protect\thispagestyle{plain}}
+
+% Hyperlinks
+\usepackage{hyperref}
+\usepackage{bookmark}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    filecolor=blue,
+    urlcolor=customCodeBlue,
+    unicode,
+    pdftitle={Ανίχνευση Δικτυακών Εισβολών με Μηχανική Μάθηση},
+    pdfsubject={Αναφορά Εργασίας Εξόρυξης Δεδομένων},
+    pdfauthor={Βασίλειος Μπίτζας},
+    pdfborderstyle={/S/U/W 1},
+}
+
+\definecolor{customRed}{HTML}{FF5F5A}
+\definecolor{customYellow}{HTML}{FFBE2E}
+\definecolor{customGreen}{HTML}{2ACA44}
+\definecolor{customPurple}{HTML}{C477DB}
+\definecolor{customBlue}{HTML}{052538}
+\definecolor{customLightBlue}{HTML}{60ADEC}
+\definecolor{customGray}{HTML}{A0A0A0}
+\definecolor{customBlack}{HTML}{000000}
+
+\definecolor{customBgGray}{HTML}{E0E0E0}
+\definecolor{customCodeRed}{HTML}{C92A2A}
+\definecolor{customCodeYellow}{HTML}{E67700}
+\definecolor{customCodeGreen}{HTML}{087F23}
+\definecolor{customCodePurple}{HTML}{7B1FA2}
+\definecolor{customCodeBlue}{HTML}{1976D2}
+\definecolor{customCodeBlack}{HTML}{1A1A1A}
+
+\lstdefinestyle{myPythonStyle}{
+    language=Python,
+    backgroundcolor=\color{customBgGray},
+    basicstyle=\color{customCodeBlack}\ttfamily\footnotesize,
+    keywordstyle=\color{customCodePurple}\bfseries,
+    keywordstyle=[2]\color{customCodeYellow}\bfseries,
+    commentstyle=\color{customCodeGreen}\itshape,
+    stringstyle=\color{customCodeGreen},
+    identifierstyle=\color{customCodeBlue},
+    morekeywords={self, None, True, False, format, abs,
+                as, pass, return, if, elif, else, for,
+                range, while, try, except, with, lambda,
+                yield, global, nonlocal, assert, del,
+                raise, in, is, and, or, not},
+    morekeywords=[2]{os, pd, np, plt, sns, sklearn, pandas, numpy,
+                    matplotlib, seaborn, RandomForestClassifier,
+                    LogisticRegression, DecisionTreeClassifier,
+                    KMeans, DBSCAN, StandardScaler, RobustScaler,
+                    GridSearchCV, train_test_split, classification_report,
+                    fit, transform, fit_transform, predict, score,
+                    read_csv, read_parquet, to_parquet, drop, dropna,
+                    drop_duplicates, corr, describe, value_counts,
+                    select_dtypes, isna, isnull, info, head, shape},
+    showstringspaces=false,
+    breaklines=true,
+    breakatwhitespace=false,
+    postbreak={\space},
+    breakautoindent=false,
+    breakindent=0pt,
+    resetmargins=true,
+    keepspaces=true,
+    showspaces=false,
+    columns=flexible,
+    numbers=left,
+    numberstyle=\small\color{customBgGray},
+    stepnumber=1,
+    numbersep=8pt,
+    xleftmargin=1.5em,
+    tabsize=4,
+    captionpos=t,
+    firstnumber=auto,
+    aboveskip=0em,
+    belowskip=0em,
+    frame=none,
+    framerule=0pt,
+    rulecolor=\color{customBgGray},
+    framesep=2pt,
+    escapeinside={\(*@}{@*\)},
+    morecomment=[l]{\#},
+    morestring=[b]',
+    morestring=[b]",
+    literate={
+        {``}{{\textquotedbleft}}2
+        {''}{{\textquotedbright}}2
+        {`}{{\textquoteleft}}1
+        {'}{{\textquoteright}}1
+        {_}{{\_}}1
+    },
+}
+
+\lstdefinestyle{myBashStyle}{
+    language=bash,
+    backgroundcolor=\color{customBgGray},
+    basicstyle=\color{customCodeBlack}\ttfamily\footnotesize,
+    keywordstyle=\color{customCodePurple}\bfseries,
+    keywordstyle=[2]\color{customCodeYellow}\bfseries,
+    commentstyle=\color{customCodeGreen}\itshape,
+    stringstyle=\color{customCodeGreen},
+    identifierstyle=\color{customCodeBlue},
+    alsoletter={0123456789}
+    morekeywords={if, then, else, elif, fi, for, while, do, done, in, case, esac,
+                  function, select, until, break, continue, return, exit, shift,
+                  declare, local, readonly, export, set, unset},
+    morekeywords=[2]{echo, cat, grep, sed, cut, sort, uniq, wc,
+                     mkdir, rm, cp, mv, ls, cd, pwd, chmod, find,
+                     source, pip, python, jupyter, git},
+    showstringspaces=false,
+    frame=none,
+    rulecolor=\color{customBgGray},
+    breaklines=true,
+    breakatwhitespace=false,
+    postbreak={\space},
+    breakautoindent=false,
+    breakindent=0pt,
+    resetmargins=true,
+    keepspaces=true,
+    showspaces=false,
+    columns=flexible,
+    numbers=left,
+    numberstyle=\small\color{customBgGray},
+    stepnumber=1,
+    numbersep=8pt,
+    xleftmargin=1.5em,
+    tabsize=4,
+    captionpos=t,
+    firstnumber=auto,
+    aboveskip=0em,
+    belowskip=0em,
+    framesep=2pt,
+    escapeinside={\(*@}{@*\)},
+    morecomment=[l]{\#},
+    morestring=[b]",
+    morestring=[b]',
+    literate={
+        {``}{{\textquotedbleft}}2
+        {''}{{\textquotedbright}}2
+        {`}{{\textquoteleft}}1
+        {'}{{\textquoteright}}1
+        {_}{{\_}}1
+    },
+}
+
+\tcbset{
+    myCustomStyle/.style={
+        enhanced,
+        breakable,
+        colback=customBlue,
+        colframe=customBgGray,
+        listing only,
+        fonttitle=\bfseries,
+        interior style={
+            top color=black!75,
+            bottom color=black!75,
+        },
+        colbacktitle=black!75,
+        coltitle=white,
+        rounded corners,
+        boxrule=1mm,
+        drop shadow southeast,
+        lefttitle=0pt,
+        title={\hspace*{-1em}\textcolor{customRed}{● }\textcolor{customYellow}{● }\textcolor{customGreen}{●}\quad#1},
+        attach title to upper={\vspace{2.3mm}},
+        beforeafter skip=8pt,
+        breaklines=true,
+        breakatwhitespace=false,
+    }
+}
+
+% Custom commands for language switching
+\newcommand{\en}[1]{\foreignlanguage{english}{#1}}
+\newcommand{\gr}[1]{\foreignlanguage{greek}{#1}}
+\newcommand{\blue}[1]{\textcolor{blue}{#1}}
+
+% Index
+\makeindex
+\setlength{\headheight}{14.5pt}
+
+% Chapter/section spacing
+\titleformat{\chapter}[display]
+{\normalfont\huge\bfseries}{\chaptertitlename\ \thechapter}{15pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{-10pt}{20pt}
+
+\titlespacing*{\section}{0pt}{10pt}{10pt}
+\setlength{\parskip}{0.5em}
+
+% Figure placement
+\setcounter{topnumber}{2}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\bottomfraction}{0.85}
+\renewcommand{\textfraction}{0.15}
+\renewcommand{\floatpagefraction}{0.7}
+
+% Graphics path: figures live under outputs/figures/ at the repo root
+\graphicspath{{../outputs/figures/}}
+
+\begin{document}
+\pagenumbering{arabic}
+\let\cleardoublepage\clearpage
+
+\selectlanguage{greek}
+
+\title{Ανίχνευση Δικτυακών Εισβολών με Μηχανική Μάθηση}
+\author{Βασίλειος Μπίτζας}
+\date{\today}
+
+%=============================================================================
+% TITLE PAGE
+%=============================================================================
+\begin{titlepage}
+    \vspace*{4cm}
+    \begin{center}
+        % \includegraphics[width=0.3\textwidth]{media/logo.png}\\
+        % \vspace*{1cm}
+        {\LARGE \textbf{\textit{Ανίχνευση Δικτυακών Εισβολών}}}\\
+        \vspace*{0.3cm}
+        {\LARGE \textbf{\textit{με Μηχανική Μάθηση}}}\\
+        \vspace*{0.5cm}
+        {\large Ανάλυση του Συνόλου Δεδομένων CIC-IDS-2017}\\
+        \vspace*{0.3cm}
+        {\large Εξόρυξη Δεδομένων \& Μηχανική Μάθηση}
+        \vspace*{5cm}
+        \\
+        \vspace*{1cm}
+        \begin{tabular}{l l l}
+            \large Βασίλειος Μπίτζας & \large 1083796 & \large up1083796@ac.upatras.gr
+        \end{tabular}
+
+        \vspace*{1cm}
+
+        {\normalsize Τμήμα Μηχανικών Ηλεκτρονικών Υπολογιστών \& Πληροφορικής}
+        \\
+        {\normalsize Πανεπιστήμιο Πατρών}
+        \\
+        \vspace*{0.5cm}
+        {\normalsize \today}
+    \end{center}
+    \thispagestyle{empty}
+\end{titlepage}
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+%=============================================================================
+% ΚΕΦΑΛΑΙΟ 1: ΕΙΣΑΓΩΓΗ
+%=============================================================================
+\chapter{Εισαγωγή}
+
+\section{Πλαίσιο και Κίνητρο}
+
+Η ραγδαία αύξηση της εξάρτησης των υποδομών από το διαδίκτυο έχει καταστήσει
+την \textbf{ανίχνευση δικτυακών εισβολών} (Network Intrusion Detection) έναν
+από τους πιο κρίσιμους τομείς της κυβερνοασφάλειας. Τα σύγχρονα συστήματα
+ανίχνευσης εισβολών (Intrusion Detection Systems, IDS) δεν μπορούν πλέον να
+βασίζονται αποκλειστικά σε \textit{signature-based} κανόνες, καθώς οι
+επιτιθέμενοι προσαρμόζουν συνεχώς τις τεχνικές τους. Αντίθετα, οι
+προσεγγίσεις που βασίζονται σε \textbf{μηχανική μάθηση} (machine learning)
+μαθαίνουν μοτίβα από ιστορικά δεδομένα δικτυακής ροής και γενικεύουν σε νέες,
+άγνωστες επιθέσεις.
+
+Η παρούσα εργασία αναπτύσσει ένα ολοκληρωμένο pipeline εξόρυξης δεδομένων
+πάνω στο \textbf{CIC-IDS-2017}, ένα από τα πιο ευρέως χρησιμοποιούμενα
+δημόσια σύνολα δεδομένων για έρευνα IDS. Το σύνολο περιέχει \textbf{2.83
+εκατομμύρια} εγγραφές δικτυακής ροής (flow records) κατανεμημένες σε μία
+κανονική κλάση (\texttt{BENIGN}) και 14 διαφορετικούς τύπους επιθέσεων, από
+DDoS και port-scanning μέχρι web attacks και εξαιρετικά σπάνια exploits
+όπως το \texttt{Heartbleed}.
+
+\section{Στόχοι Εργασίας}
+
+Η εργασία δομείται γύρω από τρία συνδεδεμένα ερωτήματα:
+
+\begin{enumerate}
+    \item \textbf{Ερώτημα 1 - Exploratory Data Analysis.} Φόρτωση, καθαρισμός
+    και στατιστική περιγραφή του CIC-IDS-2017. Αντιμετώπιση Inf/NaN, διπλοτύπων,
+    ανισορροπίας κλάσεων και πολυσυγγραμμικότητας features. Εξαγωγή ενός
+    καθαρού, cached snapshot για επαναχρησιμοποίηση στα Q2 και Q3.
+
+    \item \textbf{Ερώτημα 2 - Ταξινόμηση.} Εκπαίδευση και σύγκριση τριών
+    αλγορίθμων (Logistic Regression, Decision Tree, Random Forest) με δύο
+    διαφορετικές ρυθμίσεις Grid Search (A και B) για hyperparameter tuning.
+    Αξιολόγηση με macro-F1 και per-class μετρικές λόγω έντονης ανισορροπίας.
+
+    \item \textbf{Ερώτημα 3 - Συσταδοποίηση.} Εφαρμογή K-Means, Hierarchical
+    Clustering και DBSCAN σε unsupervised mode. Σύγκριση των συστάδων με τις
+    γνωστές ετικέτες (external validation) για να εκτιμηθεί κατά πόσο η δομή
+    των δεδομένων υποστηρίζει ανίχνευση επιθέσεων χωρίς labels.
+\end{enumerate}
+
+Η αναφορά αυτή επικεντρώνεται κυρίως στο \textbf{Ερώτημα 1}, το οποίο
+αποτελεί το υπόβαθρο για τα υπόλοιπα δύο. Τα Q2 και Q3 θα προστεθούν ως
+ξεχωριστά κεφάλαια καθώς ολοκληρώνονται.
+
+\section{Περιγραφή Δεδομένων}
+
+\subsection{CIC-IDS-2017 Dataset}
+
+Το CIC-IDS-2017 δημιουργήθηκε από το Canadian Institute for Cybersecurity
+(CIC) και κυκλοφορεί ως σύνολο από οκτώ αρχεία CSV, ένα για κάθε ημέρα και
+χρονική ζώνη της εβδομαδιαίας καταγραφής:
+
+\begin{itemize}
+    \item \texttt{Monday-WorkingHours.pcap\_ISCX.csv} - μόνο κανονική κίνηση.
+    \item \texttt{Tuesday-WorkingHours.pcap\_ISCX.csv} - Brute Force (FTP/SSH).
+    \item \texttt{Wednesday-workingHours.pcap\_ISCX.csv} - DoS (Hulk, GoldenEye,
+    slowloris, Slowhttptest, Heartbleed).
+    \item \texttt{Thursday-WorkingHours-Morning-WebAttacks.pcap\_ISCX.csv} -
+    Brute Force, XSS, SQL Injection.
+    \item \texttt{Thursday-WorkingHours-Afternoon-Infilteration.pcap\_ISCX.csv} -
+    Infiltration.
+    \item \texttt{Friday-WorkingHours-Morning.pcap\_ISCX.csv} - Botnet.
+    \item \texttt{Friday-WorkingHours-Afternoon-PortScan.pcap\_ISCX.csv} -
+    Port Scan.
+    \item \texttt{Friday-WorkingHours-Afternoon-DDos.pcap\_ISCX.csv} - DDoS.
+\end{itemize}
+
+Κάθε γραμμή αντιστοιχεί σε μία \textit{δικτυακή ροή} (flow), δηλαδή μια ακολουθία
+πακέτων μεταξύ ενός ζεύγους IP/ports για ένα συγκεκριμένο πρωτόκολλο.
+Τα features έχουν εξαχθεί με το εργαλείο \textbf{CICFlowMeter} και
+περιλαμβάνουν:
+
+\begin{itemize}
+    \item \textbf{Βασικά} χαρακτηριστικά: \texttt{Destination Port},
+    \texttt{Flow Duration}, \texttt{Total Fwd/Bwd Packets}.
+    \item \textbf{Στατιστικά μήκους πακέτων}: mean, std, min, max σε forward
+    και backward κατευθύνσεις.
+    \item \textbf{Στατιστικά χρονικών διαστημάτων} (Inter-Arrival Times, IAT):
+    \texttt{Flow IAT Mean/Std/Max/Min}, \texttt{Fwd IAT}, \texttt{Bwd IAT}.
+    \item \textbf{Flags TCP}: \texttt{FIN/SYN/RST/PSH/ACK/URG Flag Count}.
+    \item \textbf{Bulk και subflow} στατιστικά, χαρακτηριστικά
+    active/idle χρόνου.
+\end{itemize}
+
+Η δεύτερη στήλη που αφορά την εργασία είναι το \textbf{Label} - η ετικέτα
+της κλάσης (\texttt{BENIGN} ή όνομα επίθεσης).
+
+\subsection{Συνοπτικά Μεγέθη}
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lc}
+        \toprule
+        \textbf{Μέγεθος}                 & \textbf{Τιμή}           \\
+        \midrule
+        Πηγαία αρχεία CSV                & 8                       \\
+        Αρχικές γραμμές                  & 2.830.743               \\
+        Αρχικές στήλες                   & 79 (+ \texttt{Label})   \\
+        Κλάσεις (συμπ. \texttt{BENIGN})  & 15                      \\
+        Μετά από καθαρισμό (γραμμές)     & 2.572.640               \\
+        Μετά από feature selection       & 47 features + Label     \\
+        Cached Parquet snapshot          & 221,9 MB                \\
+        \bottomrule
+    \end{tabular}
+    \caption{Βασικά μεγέθη του CIC-IDS-2017 πριν και μετά την
+    προεπεξεργασία.}\label{tab:dataset_sizes}
+\end{table}
+
+\section{Διάρθρωση της Αναφοράς}
+
+Η υπόλοιπη αναφορά οργανώνεται ως εξής:
+
+\begin{itemize}
+    \item \textbf{Κεφάλαιο 2 - Θεωρητικό Υπόβαθρο.} Περιγράφονται οι
+    θεμελιώδεις έννοιες που χρησιμοποιούνται σε όλα τα ερωτήματα:
+    preprocessing, class imbalance, Pearson correlation,
+    multicollinearity, κ.α.
+
+    \item \textbf{Κεφάλαιο 3 - Ερώτημα 1: Exploratory Data Analysis.}
+    Λεπτομερής περιγραφή της μεθοδολογίας και των αποτελεσμάτων του Q1.
+
+    \item \textbf{Κεφάλαιο 4 - Ερώτημα 2: Ταξινόμηση.} Εκπαίδευση και
+    αξιολόγηση μοντέλων (θα συμπληρωθεί).
+
+    \item \textbf{Κεφάλαιο 5 - Ερώτημα 3: Συσταδοποίηση.} Unsupervised
+    learning και εξωτερική αξιολόγηση (θα συμπληρωθεί).
+
+    \item \textbf{Κεφάλαιο 6 - Συμπεράσματα και Μελλοντικές Κατευθύνσεις.}
+
+    \item \textbf{Παράρτημα} με οδηγίες εγκατάστασης, εκτέλεσης και
+    αναπαραγωγής.
+\end{itemize}
+
+%=============================================================================
+% ΚΕΦΑΛΑΙΟ 2: ΘΕΩΡΗΤΙΚΟ ΥΠΟΒΑΘΡΟ
+%=============================================================================
+\chapter{Θεωρητικό Υπόβαθρο}
+
+Σε αυτό το κεφάλαιο συνοψίζονται τα βασικά θεωρητικά εργαλεία που
+χρησιμοποιούνται στα τρία ερωτήματα. Οι έννοιες παρουσιάζονται όπως εμφανίζονται
+στο pipeline: από τον καθαρισμό δεδομένων (Q1) μέχρι την ταξινόμηση (Q2) και
+τη συσταδοποίηση (Q3).
+
+\section{Προεπεξεργασία Δεδομένων}
+
+\subsection{Missing Values και Infinities}
+
+Ένα πραγματικό σύνολο δεδομένων σπάνια είναι πλήρες. Στις δικτυακές
+μετρήσεις του CIC-IDS-2017 οι \textit{rate} στήλες
+(\texttt{Flow Bytes/s}, \texttt{Flow Packets/s}) υπολογίζονται ως διαιρέσεις
+με τη \texttt{Flow Duration}. Όταν η διάρκεια μιας ροής είναι μηδέν
+μικροδευτερόλεπτα (π.χ. single-packet flow), προκύπτουν τιμές
+\(\pm\infty\). Η ανάγνωση αυτών από οποιονδήποτε
+\texttt{StandardScaler}, \texttt{RobustScaler} ή από τον ίδιο το classifier
+αποτυγχάνει.
+
+Η τυπική πρακτική είναι:
+\begin{enumerate}
+    \item Αντικατάσταση \(\pm\infty\) με \texttt{NaN} (\texttt{df.replace}).
+    \item Επιλογή μεταξύ \textbf{drop rows} ή \textbf{imputation}:
+    \begin{itemize}
+        \item \textbf{Drop}: απλό, διατηρεί την κατανομή, χάνει δεδομένα.
+        \item \textbf{Median imputation}: ανθεκτικό σε outliers, αλλά
+        εισάγει bias σε rate στήλες.
+        \item \textbf{Zero imputation}: δηλώνει «μηδενικό throughput»,
+        συνήθως λάθος σε flow-based μετρικές.
+    \end{itemize}
+\end{enumerate}
+
+Όταν τα missing values είναι \(<1\%\) και σχετίζονται με ανώμαλες
+παρατηρήσεις (π.χ. μηδενική διάρκεια), η drop-rows είναι συνήθως η
+ασφαλέστερη επιλογή.
+
+\subsection{Εξαιρετικά Διπλότυπα}
+
+Τα exact duplicates δημιουργούν δύο προβλήματα:
+\begin{itemize}
+    \item \textbf{Πληθωρισμό κλάσεων}: αν χιλιάδες BENIGN γραμμές είναι
+    πανομοιότυπες, το accuracy υπερεκτιμά τη γενικευτική ικανότητα του
+    μοντέλου.
+    \item \textbf{Data leakage μεταξύ train/test}: αν μια γραμμή εμφανιστεί
+    και στα δύο split, το μοντέλο «απομνημονεύει» αντί να «μαθαίνει».
+\end{itemize}
+
+Γι' αυτό η αφαίρεση duplicates γίνεται \textbf{πριν} από κάθε split και
+όχι αφού.
+
+\section{Κλάσεις σε Ανισορροπία}
+
+Όταν η αναλογία της μεγαλύτερης προς τη μικρότερη κλάση ξεπερνά το
+\(\sim 10:1\), μιλάμε για \textbf{imbalanced classification}. Στο
+CIC-IDS-2017 αυτή η αναλογία είναι \(\sim 195\,000:1\) (BENIGN vs.
+Heartbleed), με τρεις άμεσες συνέπειες:
+
+\begin{enumerate}
+    \item \textbf{Παραπλανητική accuracy.} Ένας taxonomist «always
+    BENIGN» επιτυγχάνει \(\sim 83\%\) χωρίς να ανιχνεύσει ούτε μία επίθεση.
+    Γι' αυτό αναφέρουμε \textbf{macro-F1} και \textbf{per-class precision/recall}.
+
+    \item \textbf{Προκατάληψη εκπαίδευσης.} Οι default αλγόριθμοι
+    ελαχιστοποιούν το total loss, άρα ευνοούν τη majority class. Αντίμετρα:
+    \begin{itemize}
+        \item \texttt{class\_weight=\textquotesingle balanced\textquotesingle}: αντίστροφα βάρη
+        στο loss.
+        \item \textbf{SMOTE} (Synthetic Minority Over-sampling Technique):
+        synthetic samples για τις minority classes.
+        \item \textbf{Undersampling} της majority class.
+    \end{itemize}
+
+    \item \textbf{Stratified splitting υποχρεωτικό.} Ένα τυχαίο split
+    μπορεί να στείλει όλες τις 11 Heartbleed γραμμές στο training set,
+    αφήνοντας το test σύνολο χωρίς δείγματα για αξιολόγηση. Το
+    \texttt{StratifiedShuffleSplit} διατηρεί τα αναλογικά ποσοστά ανά κλάση.
+\end{enumerate}
+
+\section{Pearson Correlation}
+
+Ο \textbf{συντελεστής συσχέτισης Pearson} μεταξύ δύο μεταβλητών \(X, Y\)
+ορίζεται ως:
+\begin{equation}
+    r_{XY} = \frac{\mathrm{Cov}(X, Y)}{\sigma_X \sigma_Y}
+           = \frac{\sum_{i=1}^{n}(x_i-\bar x)(y_i-\bar y)}
+                  {\sqrt{\sum_{i=1}^{n}(x_i-\bar x)^2}\,
+                   \sqrt{\sum_{i=1}^{n}(y_i-\bar y)^2}}
+\end{equation}
+με \(r \in [-1, +1]\). Τιμές \(\pm 1\) δηλώνουν τέλεια γραμμική εξάρτηση,
+\(r \approx 0\) καμία \emph{γραμμική} εξάρτηση (αλλά μπορεί να υπάρχει
+μη-γραμμική).
+
+\subsection{Τυφλά Σημεία}
+
+Η Pearson έχει τρεις γνωστούς περιορισμούς που είναι χρήσιμοι στην ερμηνεία
+των αποτελεσμάτων:
+\begin{itemize}
+    \item Δεν ανιχνεύει \textbf{μη-γραμμικές} σχέσεις (π.χ.
+    \(Y = X^2\) δίνει \(r \approx 0\)).
+    \item Είναι ιδιαίτερα ευαίσθητη σε \textbf{outliers}, ειδικά σε
+    κατανομές heavy-tailed.
+    \item Απαιτεί \textbf{αριθμητικές} μεταβλητές. Το label encoding που
+    εφαρμόζουμε στο \texttt{Label} επιβάλλει αυθαίρετη διάταξη, οπότε
+    η \texttt{corrwith(Label)} είναι μόνο \textit{ενδεικτική}. Για
+    αυστηρή αξιολόγηση feature importance χρησιμοποιείται
+    \textbf{mutual information} ή tree-based importance.
+\end{itemize}
+
+\section{Multicollinearity}
+
+Δύο features με \(|r| \to 1\) μεταφέρουν την ίδια πληροφορία. Η
+\textbf{πολυσυγγραμμικότητα} (multicollinearity) βλάπτει τα μοντέλα με τρεις
+τρόπους:
+
+\begin{enumerate}
+    \item \textbf{Γραμμικά μοντέλα} (Logistic Regression): οι συντελεστές
+    γίνονται ασταθείς. Με δύο σχεδόν πανομοιότυπα features, ο αλγόριθμος
+    μπορεί να δώσει \(w_1=+10,\ w_2=-10\) ή \(w_1=+5,\ w_2=-5\),
+    μαθηματικά ισοδύναμα αλλά ανερμήνευτα. Η τυπική απόκλιση των
+    coefficients εκρήγνυται.
+    \item \textbf{Αλγόριθμοι βασισμένοι σε αποστάσεις} (K-Means, KNN,
+    DBSCAN): η επανειλημμένη διάσταση μετράει διπλά στην ευκλείδεια
+    απόσταση, οπότε αυτή η διάσταση κυριαρχεί τεχνητά.
+    \item \textbf{Υπολογιστικά}: περισσότερες στήλες σημαίνει πιο αργή
+    εκπαίδευση χωρίς κέρδος πληροφορίας.
+\end{enumerate}
+
+Η στρατηγική που ακολουθούμε είναι να κρατήσουμε μία μόνο στήλη ανά
+cluster υψηλής συσχέτισης (με threshold \(|r|>0.95\)), διατηρώντας την
+πρώτη στη σειρά των στηλών και πετώντας τις άλλες.
+
+\section{log1p Transform και Skewness}
+
+Πολλά features του CIC-IDS-2017 εκτείνονται σε πολλές τάξεις μεγέθους
+(π.χ. \texttt{Flow Duration} από μs έως λεπτά) και έχουν skewness
+\(>100\) με kurtosis στις χιλιάδες. Χωρίς μετασχηματισμό, τα ιστογράμματα
+συμπτύσσονται σε μία κορυφή κοντά στο 0 με λεπτή ουρά και οι boxplots
+είναι οπτικά άχρηστα.
+
+Ο μετασχηματισμός \textbf{log1p}:
+\begin{equation}
+    \texttt{log1p}(x) = \log(1+x)
+\end{equation}
+έχει τρία πλεονεκτήματα:
+\begin{itemize}
+    \item Είναι ασφαλής για \(x=0\) (ενώ \(\log(0) \to -\infty\)).
+    \item Για μεγάλα \(x\), \(\texttt{log1p}(x) \approx \log(x)\).
+    \item Για μικρά \(x\), η Taylor expansion δίνει \(\texttt{log1p}(x) \approx x\).
+\end{itemize}
+
+\section{Stratified Sampling για Οπτικοποίηση}
+
+Για ένα dataset με \(\sim 2.57\) εκατομμύρια γραμμές, το KDE και τα
+heatmaps γίνονται απαγορευτικά αργά. Η στρατηγική μας είναι:
+\begin{itemize}
+    \item \textbf{Στατιστικά} (\texttt{describe}, correlation matrix):
+    ολόκληρο το dataset. Δεν υπάρχει λόγος να θυσιάσουμε ακρίβεια.
+    \item \textbf{Οπτικοποιήσεις}: stratified sample \(50\,000\) γραμμών με
+    \texttt{StratifiedShuffleSplit}, ώστε κάθε κλάση (ακόμα και η
+    Heartbleed με 11 γραμμές) να εκπροσωπείται.
+\end{itemize}
+
+\section{Αξιολόγηση Ταξινομητών (Q2)}
+
+\subsection{Confusion Matrix}
+
+Για multi-class classification με \(C\) κλάσεις, η confusion matrix
+\(M \in \mathbb{N}^{C \times C}\) ορίζεται ως
+\(M_{ij} = \) πλήθος δειγμάτων με πραγματική κλάση \(i\) που ταξινομήθηκαν
+στην κλάση \(j\). Η διαγώνιος είναι τα σωστά (TP ανά κλάση).
+
+\subsection{Precision, Recall, F1}
+
+Για κάθε κλάση \(c\):
+\begin{align}
+    \text{Precision}_c &= \frac{TP_c}{TP_c + FP_c}, \\
+    \text{Recall}_c    &= \frac{TP_c}{TP_c + FN_c}, \\
+    F1_c               &= 2 \cdot \frac{\text{Precision}_c \cdot \text{Recall}_c}
+                                        {\text{Precision}_c + \text{Recall}_c}.
+\end{align}
+
+Το \textbf{macro-F1} είναι ο αστάθμιστος μέσος όρος των \(F1_c\) -
+κάθε κλάση μετράει το ίδιο, ανεξάρτητα από το μέγεθός της. Το
+\textbf{weighted-F1} σταθμίζει με το support, επομένως υπερεκτιμά τα
+μοντέλα που τα πάνε καλά στη majority class.
+
+\subsection{Grid Search Cross-Validation}
+
+Το \texttt{GridSearchCV} εξαντλητικά δοκιμάζει όλους τους συνδυασμούς
+hyperparameters σε \(k\)-fold cross-validation (συνήθως \(k=5\)). Η
+\textbf{stratified} παραλλαγή διατηρεί την κατανομή των κλάσεων σε κάθε
+fold, κρίσιμο για imbalanced data.
+
+\section{Συσταδοποίηση (Q3)}
+
+\subsection{K-Means}
+
+Ο αλγόριθμος K-Means ελαχιστοποιεί την εντός-συστάδας διασπορά (inertia):
+\begin{equation}
+    \min_{\{C_k\}, \{\mu_k\}} \sum_{k=1}^{K} \sum_{x \in C_k} \|x - \mu_k\|^2.
+\end{equation}
+
+Επιλογή του \(K\): elbow method (inertia vs \(K\)) ή silhouette score.
+
+\subsection{DBSCAN}
+
+Σε αντίθεση με το K-Means, το DBSCAN δεν απαιτεί προκαθορισμένο \(K\),
+βρίσκει συστάδες αυθαίρετου σχήματος και χαρακτηρίζει σημεία ως
+\textbf{noise} αν δεν ανήκουν σε κάποια πυκνή περιοχή. Ορίζεται από δύο
+παραμέτρους:
+\begin{itemize}
+    \item \(\varepsilon\) (eps): ακτίνα γειτονιάς.
+    \item \texttt{min\_samples}: ελάχιστα σημεία σε μια πυκνή περιοχή.
+\end{itemize}
+
+\subsection{Hierarchical Clustering}
+
+Κατασκευάζει ένα δενδρόγραμμα (dendrogram) συγχωνεύοντας επαναληπτικά τα
+πιο κοντινά σημεία/συστάδες. Η linkage function (single, complete,
+average, Ward) καθορίζει πώς μετράται η απόσταση μεταξύ συστάδων.
+
+\subsection{External Validation με ARI}
+
+Όταν οι \textit{πραγματικές} ετικέτες είναι γνωστές (όπως εδώ), μπορούμε
+να αξιολογήσουμε τις συστάδες με \textbf{Adjusted Rand Index (ARI)} ή
+\textbf{Normalized Mutual Information (NMI)}. Αυτό μας λέει πόσο καλά η
+δομή των δεδομένων αντιστοιχεί στις κλάσεις επίθεσης, χωρίς να έχει
+χρησιμοποιηθεί καμία ετικέτα κατά την εκπαίδευση.
+
+%=============================================================================
+% ΚΕΦΑΛΑΙΟ 3: ΕΡΩΤΗΜΑ 1 - EDA
+%=============================================================================
+\chapter{Ερώτημα 1: Exploratory Data Analysis}
+
+\section{Επισκόπηση του Pipeline}
+
+Το Q1 υλοποιήθηκε ως ένα μοναδικό Jupyter notebook
+(\texttt{notebooks/q1\_eda.ipynb}), εύκολα επανεκτελέσιμο μέσω
+\texttt{nbconvert}. Το pipeline που ακολουθεί είναι αυτό:
+
+\begin{enumerate}
+    \item Φόρτωση όλων των 8 CSV αρχείων και συγχώνευσή τους.
+    \item Κανονικοποίηση ονομάτων στηλών και ετικετών.
+    \item Αντιμετώπιση Inf και NaN.
+    \item Αφαίρεση duplicates.
+    \item Περιγραφικά στατιστικά και οπτικοποίηση κατανομής κλάσεων.
+    \item Ιστογράμματα, boxplots, correlation heatmap.
+    \item Feature selection (zero-variance + high-correlation).
+    \item Αποθήκευση σε Parquet για επαναχρησιμοποίηση από Q2/Q3.
+\end{enumerate}
+
+\section{Φόρτωση και Επισκόπηση}
+
+\subsection{Ενοποίηση των 8 CSV}
+
+Η βοηθητική συνάρτηση \texttt{load\_cic\_ids\_2017} (αρχείο
+\texttt{utils/helpers.py}) διαβάζει ένα προς ένα τα 8 CSV αρχεία με
+\texttt{encoding=\textquotesingle latin1\textquotesingle} για να
+αντιμετωπίσει τα corrupted bytes στα labels των Web Attacks, κάνει
+concatenation και κρατά προέλευση μέσω της στήλης \texttt{\_\_source\_file}
+(αφαιρείται αργότερα).
+
+\begin{tcolorbox}[myCustomStyle={Φόρτωση Dataset}]
+\begin{lstlisting}[style=myPythonStyle]
+from utils.helpers import load_cic_ids_2017, RANDOM_STATE
+import numpy as np, pandas as pd
+
+df = load_cic_ids_2017()
+print(df.shape)   # (2830743, 80)
+\end{lstlisting}
+\end{tcolorbox}
+
+Μέσα στη \texttt{\_standardize\_columns} γίνεται και ένα κρίσιμο βήμα: η
+στήλη \texttt{Fwd Header Length.1} - ένα αντίγραφο της
+\texttt{Fwd Header Length} που εξάγει λανθασμένα το CICFlowMeter -
+αφαιρείται αυτόματα.
+
+\subsection{Καθαρισμός Ετικετών}
+
+Οι ετικέτες των Web Attacks στα raw CSV περιέχουν το χαρακτήρα U+FFFD (το
+Unicode replacement character) στη θέση ενός en-dash:
+\texttt{"Web Attack \(\square\) Brute Force"}. Η \texttt{\_clean\_labels}
+τα κανονικοποιεί σε \texttt{"Web Attack Brute Force"}, \texttt{"Web Attack XSS"},
+\texttt{"Web Attack Sql Injection"}.
+
+\section{Καθαρισμός Δεδομένων}
+
+\subsection{Infinities και Missing Values}
+
+Οι στήλες \texttt{Flow Bytes/s} και \texttt{Flow Packets/s} περιέχουν
+\(4\,376\) τιμές \(\pm\infty\) (από διαίρεση με \texttt{Flow Duration}=0).
+Ακολουθούμε τη στρατηγική replace-\&-drop:
+
+\begin{tcolorbox}[myCustomStyle={Inf και NaN}]
+\begin{lstlisting}[style=myPythonStyle]
+from utils.helpers import handle_infinities
+
+df = handle_infinities(df)   # (+/-inf) -> NaN
+print(df.isna().sum().sum()) # 4376 NaN total
+before = len(df)
+df = df.dropna().reset_index(drop=True)
+print(before - len(df), "rows dropped")   # 2867 rows
+\end{lstlisting}
+\end{tcolorbox}
+
+Το αποτέλεσμα είναι \textbf{2.867} γραμμές που αφαιρέθηκαν, δηλαδή
+\(0.101\%\) του dataset - ποσοστό πολύ μικρό για να επηρεάσει τη δομή.
+
+\subsection{Duplicates}
+
+Η \texttt{drop\_duplicates\_report} αναφέρει \textbf{255.236} exact
+duplicates (\(\sim 9\%\) μετά το NaN handling). Αυτά αφαιρούνται \textit{πριν}
+το οποιοδήποτε split, ώστε το test set του Q2 να είναι πραγματικά unseen.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lrr}
+        \toprule
+        \textbf{Στάδιο} & \textbf{Γραμμές} & \textbf{Διαφορά}       \\
+        \midrule
+        Αρχικό           & 2.830.743        & ---                    \\
+        Μετά drop NaN    & 2.827.876        & \(-2\,867\)            \\
+        Μετά drop dup    & 2.572.640        & \(-255\,236\)          \\
+        \bottomrule
+    \end{tabular}
+    \caption{Προοδευτική μείωση του μεγέθους του dataset κατά τον καθαρισμό.}
+    \label{tab:cleaning_stages}
+\end{table}
+
+\section{Κατανομή Κλάσεων}
+
+Η κατανομή των 15 κλάσεων φαίνεται στον Πίνακα~\ref{tab:label_distribution}
+και οπτικοποιείται στο Σχήμα~\ref{fig:label_distribution}.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{lrr}
+        \toprule
+        \textbf{Κλάση}                & \textbf{Πλήθος} & \textbf{Ποσοστό} \\
+        \midrule
+        BENIGN                        & 2.146.899        & 83,45\%          \\
+        DoS Hulk                      & 172.846          & 6,72\%           \\
+        DDoS                          & 128.014          & 4,98\%           \\
+        PortScan                      & 90.694           & 3,53\%           \\
+        DoS GoldenEye                 & 10.286           & 0,40\%           \\
+        FTP-Patator                   & 5.931            & 0,23\%           \\
+        DoS slowloris                 & 5.385            & 0,21\%           \\
+        DoS Slowhttptest              & 5.228            & 0,20\%           \\
+        SSH-Patator                   & 3.219            & 0,13\%           \\
+        Bot                           & 1.948            & 0,08\%           \\
+        Web Attack Brute Force        & 1.470            & 0,06\%           \\
+        Web Attack XSS                & 652              & 0,03\%           \\
+        Infiltration                  & 36               & 0,0014\%         \\
+        Web Attack Sql Injection      & 21               & 0,0008\%         \\
+        Heartbleed                    & 11               & 0,0004\%         \\
+        \midrule
+        \textbf{Σύνολο}               & \textbf{2.572.640} & \textbf{100\%}  \\
+        \bottomrule
+    \end{tabular}
+    \caption{Κατανομή των 15 κλάσεων μετά τον καθαρισμό. Το imbalance
+    ratio (max/min) είναι \(\approx 195\,173\times\).}
+    \label{tab:label_distribution}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \includegraphics[width=\textwidth]{q1_label_distribution_bar.png}
+        \caption{Λογαριθμικό bar chart}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \includegraphics[width=\textwidth]{q1_label_distribution_pie.png}
+        \caption{Pie chart (επικρατεί η BENIGN)}
+    \end{subfigure}
+    \caption{Κατανομή κλάσεων στο καθαρισμένο CIC-IDS-2017. Το αριστερό
+    σχήμα χρησιμοποιεί λογαριθμικό άξονα ώστε να φαίνονται και οι
+    σπάνιες κλάσεις (Heartbleed, Sql Injection, Infiltration).}
+    \label{fig:label_distribution}
+\end{figure}
+
+\textbf{Παρατηρήσεις.} Η ακραία ανισορροπία (η \texttt{BENIGN} είναι
+\(>195\,000\times\) πιο συχνή από την \texttt{Heartbleed}) καθορίζει τις
+επιλογές του Q2: θα απαιτηθεί \texttt{class\_weight="balanced"},
+macro-F1 ως κύρια metric και stratified splitting.
+
+\section{Περιγραφικά Στατιστικά}
+
+Για κάθε αριθμητική στήλη υπολογίστηκαν mean, median, std, min, 25\%, 50\%,
+75\%, max, skewness και kurtosis. Τα πλήρη αποτελέσματα αποθηκεύτηκαν στο
+\texttt{outputs/results/q1\_describe.csv}. Τα βασικά ευρήματα:
+
+\begin{itemize}
+    \item Πολλές στήλες έχουν \textbf{skewness} \(>100\) και
+    \textbf{kurtosis} στις χιλιάδες - επιβεβαιώνοντας κατανομές
+    heavy-tailed που απαιτούν log-transform για οπτικοποίηση.
+    \item Οι στήλες \texttt{Fwd Avg Bytes/Bulk},
+    \texttt{Bwd Avg Packets/Bulk} κ.ά. έχουν \texttt{std}=0, δηλαδή είναι
+    \textbf{σταθερές} σε όλες τις \(\sim 2.57\)M γραμμές και θα αφαιρεθούν
+    στο βήμα feature selection.
+\end{itemize}
+
+\section{Οπτικοποιήσεις}
+
+\subsection{Ιστογράμματα Top Features}
+
+Επιλέχθηκαν 20 features με τη μεγαλύτερη διασπορά για plot. Για λόγους
+ευκρίνειας ο άξονας \(x\) είναι σε log scale (\texttt{log1p}) και το KDE
+υπολογίστηκε σε stratified sample \(50\,000\) γραμμών.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{q1_histograms_kde.png}
+    \caption{Ιστογράμματα με KDE για τις 20 στήλες μεγαλύτερης διασποράς
+    (log1p scale). Οι περισσότερες κατανομές είναι έντονα λοξές και
+    heavy-tailed.}\label{fig:histograms}
+\end{figure}
+
+\subsection{Boxplots}
+
+Οι boxplots (Σχήμα~\ref{fig:boxplots}) αποκαλύπτουν έντονα «νέφοι»
+outliers στις rate και duration στήλες. Αυτά δεν είναι «θόρυβος» προς
+αφαίρεση - είναι ακριβώς η υπογραφή των DDoS/DoS επιθέσεων (πολύ υψηλά
+throughput, πολύ μακριές διάρκειες).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{q1_boxplots_top20.png}
+    \caption{Boxplots (log1p scale) για τις 20 στήλες μεγαλύτερης
+    διασποράς. Τα outliers πάνω από τα whiskers είναι διαγνωστικά για
+    επιθέσεις DoS/DDoS και δεν αφαιρούνται.}\label{fig:boxplots}
+\end{figure}
+
+\subsection{Correlation Heatmap}
+
+Η Pearson correlation matrix (77 \(\times\) 77) οπτικοποιείται ως
+heatmap (Σχήμα~\ref{fig:corr_heatmap}). Τα βαθυκόκκινα και βαθυγάλανα
+τετράγωνα είναι τα ζεύγη που θα στοχεύσουμε στο feature selection.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{q1_correlation_heatmap.png}
+    \caption{Pearson correlation heatmap των 77 αριθμητικών features.
+    Τα μεγάλα κόκκινα clusters αντιστοιχούν σε αλγοριθμικές ταυτότητες
+    του CICFlowMeter (π.χ. \texttt{Subflow Fwd Bytes} \(\approx\)
+    \texttt{Total Length of Fwd Packets}).}\label{fig:corr_heatmap}
+\end{figure}
+
+\subsection{Top Correlated Pairs}
+
+Τα 15 ζεύγη με τη μεγαλύτερη \(|r|\) φαίνονται στον
+Πίνακα~\ref{tab:top_correlated}. Τα επτά πρώτα ζεύγη έχουν τέλεια
+συσχέτιση (\(r=1.0\)) - δηλαδή είναι \textbf{αλγοριθμικές ταυτότητες}
+που ο CICFlowMeter εξάγει δύο φορές με διαφορετικά ονόματα.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{llr}
+        \toprule
+        \textbf{Feature A}            & \textbf{Feature B}           & \textbf{\(r\)} \\
+        \midrule
+        Bwd Packet Length Mean        & Avg Bwd Segment Size         & 1,0000         \\
+        Total Fwd Packets             & Subflow Fwd Packets          & 1,0000         \\
+        Total Backward Packets        & Subflow Bwd Packets          & 1,0000         \\
+        Fwd URG Flags                 & CWE Flag Count               & 1,0000         \\
+        Fwd Packet Length Mean        & Avg Fwd Segment Size         & 1,0000         \\
+        Fwd PSH Flags                 & SYN Flag Count               & 1,0000         \\
+        Total Length of Bwd Packets   & Subflow Bwd Bytes            & 1,0000         \\
+        Total Length of Fwd Packets   & Subflow Fwd Bytes            & 1,0000         \\
+        Total Backward Packets        & Subflow Fwd Packets          & 0,9991         \\
+        Subflow Fwd Packets           & Subflow Bwd Packets          & 0,9991         \\
+        Total Fwd Packets             & Subflow Bwd Packets          & 0,9991         \\
+        Total Fwd Packets             & Total Backward Packets       & 0,9991         \\
+        Flow Duration                 & Fwd IAT Total                & 0,9985         \\
+        Flow IAT Max                  & Fwd IAT Max                  & 0,9981         \\
+        Packet Length Mean            & Average Packet Size          & 0,9978         \\
+        \bottomrule
+    \end{tabular}
+    \caption{Top-15 ζεύγη με \(|r| > 0.997\). Τα 8 πρώτα είναι
+    αλγοριθμικές ταυτότητες του CICFlowMeter.}\label{tab:top_correlated}
+\end{table}
+
+\subsection{Correlation με το Label}
+
+Καμία στήλη δεν έχει \(|r| > 0.31\) με το label (εξαρτώμενο από label
+encoding), επιβεβαιώνοντας ότι το πρόβλημα είναι γνήσια \emph{πολυμεταβλητό}.
+Οι 5 πιο σχετικές στήλες είναι \texttt{Fwd IAT Std} (0,30),
+\texttt{Idle Mean} (0,28), \texttt{Bwd Packet Length Std} (0,28),
+\texttt{Idle Max} (0,28), \texttt{Idle Min} (0,28).
+
+\textbf{Σημείωση:} Τέσσερα από τα παραπάνω πέντε features (\texttt{Idle
+Mean/Max/Min}, \texttt{Bwd Packet Length Std}) θα αφαιρεθούν στην επόμενη
+ενότητα ως υψηλά συσχετισμένα. Αυτό \emph{δεν} αφαιρεί πληροφορία: ανήκουν
+στο ίδιο cluster με features που \emph{διατηρούνται} (π.χ.
+\texttt{Flow IAT Max} με \(r=0{,}276\) προς το label, που εκπροσωπεί τη
+ομάδα Idle/IAT-Max). Έτσι ο επόμενος ταξινομητής βλέπει την ίδια διακριτική
+σήμανση μέσω του εκπροσώπου της κάθε ομάδας.
+
+\section{Feature Selection}
+
+\subsection{Κριτήρια Αφαίρεσης}
+
+Εφαρμόσαμε τρία κριτήρια, με την ακόλουθη σειρά:
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{p{4cm}p{8cm}}
+        \toprule
+        \textbf{Κριτήριο}                    & \textbf{Αιτιολογία}                                \\
+        \midrule
+        Bookkeeping                          & Βοηθητικές στήλες (\texttt{\_\_source\_file})      \\
+                                             & που δεν είναι feature.                             \\
+        \midrule
+        Zero variance (\(\sigma^2=0\))       & Σταθερές στήλες: καμία πληροφορία,                 \\
+                                             & καταρρίπτουν κάθε scaler/model.                    \\
+        \midrule
+        High correlation (\(|r|>0.95\))      & Multicollinear near-duplicates:                    \\
+                                             & κρατάμε μία ανά cluster.                           \\
+        \bottomrule
+    \end{tabular}
+    \caption{Τα τρία κριτήρια feature selection και η αιτιολογία τους.}
+    \label{tab:selection_criteria}
+\end{table}
+
+\subsection{Αποτελέσματα}
+
+Συνολικά αφαιρέθηκαν \textbf{31 στήλες} (Πίνακας~\ref{tab:removed_features}):
+
+\begin{itemize}
+    \item \textbf{1} bookkeeping (\texttt{\_\_source\_file}).
+    \item \textbf{8} zero-variance: όλες οι Bulk-rate (\texttt{Fwd/Bwd Avg
+    Bytes/Bulk}, \texttt{.../Packets/Bulk}, \texttt{.../Bulk Rate}) και
+    \texttt{Bwd PSH Flags}, \texttt{Bwd URG Flags}. Όλες είναι μηδενικές
+    σε όλα τα \(\sim 2.57\)M flows.
+    \item \textbf{22} highly correlated: αλγοριθμικές ταυτότητες του
+    CICFlowMeter και near-duplicates (\texttt{Average Packet Size},
+    \texttt{Avg Bwd Segment Size}, \texttt{Subflow Fwd Packets},
+    κλπ.).
+\end{itemize}
+
+\begin{table}[H]
+    \centering
+    \scriptsize
+    \begin{tabular}{p{4.5cm}p{7.5cm}}
+        \toprule
+        \textbf{Στήλη}                  & \textbf{Λόγος}                                                  \\
+        \midrule
+        \_\_source\_file                & bookkeeping / non-feature helper column                         \\
+        Bwd PSH Flags                   & zero variance (constant)                                        \\
+        Bwd URG Flags                   & zero variance (constant)                                        \\
+        Fwd Avg Bytes/Bulk              & zero variance (constant)                                        \\
+        Fwd Avg Packets/Bulk            & zero variance (constant)                                        \\
+        Fwd Avg Bulk Rate               & zero variance (constant)                                        \\
+        Bwd Avg Bytes/Bulk              & zero variance (constant)                                        \\
+        Bwd Avg Packets/Bulk            & zero variance (constant)                                        \\
+        Bwd Avg Bulk Rate               & zero variance (constant)                                        \\
+        Average Packet Size             & highly correlated (\(|r|>0.95\)) with a kept feature            \\
+        Avg Bwd Segment Size            & highly correlated (\(|r|>0.95\))                                \\
+        Avg Fwd Segment Size            & highly correlated (\(|r|>0.95\))                                \\
+        Bwd Packet Length Mean          & highly correlated (\(|r|>0.95\))                                \\
+        Bwd Packet Length Std           & highly correlated (\(|r|>0.95\))                                \\
+        CWE Flag Count                  & highly correlated (\(|r|>0.95\))                                \\
+        ECE Flag Count                  & highly correlated (\(|r|>0.95\))                                \\
+        Fwd IAT Max                     & highly correlated (\(|r|>0.95\))                                \\
+        Fwd IAT Total                   & highly correlated (\(|r|>0.95\))                                \\
+        Fwd Packet Length Std           & highly correlated (\(|r|>0.95\))                                \\
+        Fwd Packets/s                   & highly correlated (\(|r|>0.95\))                                \\
+        Idle Max                        & highly correlated (\(|r|>0.95\))                                \\
+        Idle Mean                       & highly correlated (\(|r|>0.95\))                                \\
+        Idle Min                        & highly correlated (\(|r|>0.95\))                                \\
+        Packet Length Std               & highly correlated (\(|r|>0.95\))                                \\
+        SYN Flag Count                  & highly correlated (\(|r|>0.95\))                                \\
+        Subflow Bwd Bytes               & highly correlated (\(|r|>0.95\))                                \\
+        Subflow Bwd Packets             & highly correlated (\(|r|>0.95\))                                \\
+        Subflow Fwd Bytes               & highly correlated (\(|r|>0.95\))                                \\
+        Subflow Fwd Packets             & highly correlated (\(|r|>0.95\))                                \\
+        Total Backward Packets          & highly correlated (\(|r|>0.95\))                                \\
+        Total Length of Bwd Packets     & highly correlated (\(|r|>0.95\))                                \\
+        \bottomrule
+    \end{tabular}
+    \caption{Οι 31 στήλες που αφαιρέθηκαν στο feature
+    selection.}\label{tab:removed_features}
+\end{table}
+
+\subsection{Τελική Λίστα Features}
+
+Μετά το feature selection έχουμε \textbf{47 features + Label} (48 στήλες
+συνολικά), οι οποίες αποθηκεύτηκαν στο
+\texttt{outputs/results/q1\_final\_feature\_list.csv}. Ενδεικτικά, οι πρώτες
+δέκα: \texttt{Destination Port}, \texttt{Flow Duration},
+\texttt{Total Fwd Packets}, \texttt{Total Length of Fwd Packets},
+\texttt{Fwd Packet Length Max}, \texttt{Fwd Packet Length Min},
+\texttt{Fwd Packet Length Mean}, \texttt{Bwd Packet Length Max},
+\texttt{Bwd Packet Length Min}, \texttt{Flow Bytes/s}.
+
+\section{Αποθήκευση του Clean Snapshot}
+
+Το καθαρισμένο dataset σώζεται σε Parquet
+(\texttt{data/cic\_ids\_2017\_clean.parquet}, 221,9 MB) μέσω της
+\texttt{save\_clean\_cached}. Τα Q2 και Q3 το φορτώνουν άμεσα με
+\texttt{load\_clean\_cached()} χωρίς να επαναλάβουν το pipeline.
+
+\textbf{Γιατί Parquet και όχι CSV:}
+\begin{itemize}
+    \item \textbf{Columnar storage}: αν το Q3 θέλει μόνο 10 στήλες, τις
+    διαβάζει χωρίς να φορτώσει τις υπόλοιπες 38.
+    \item \textbf{Compressed}: 221,9 MB αντί για \(\sim\)900 MB σε CSV.
+    \item \textbf{Type-preserved}: διατηρεί τα int32/float32 που
+    προσεκτικά ορίσαμε στη \texttt{\_optimize\_memory}.
+    \item \textbf{Fast I/O}: τα Q2/Q3 φορτώνουν σε \(<2\) sec αντί για
+    \(\sim 60\) sec CSV parsing.
+\end{itemize}
+
+\section{Σύνοψη Q1}
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lr}
+        \toprule
+        \textbf{Μέγεθος}                            & \textbf{Τιμή}        \\
+        \midrule
+        Αρχικές γραμμές                             & 2.830.743            \\
+        Rows με \(\pm\infty\) \(\to\) NaN           & 4.376 (τιμές)        \\
+        Rows που έπεσαν λόγω NaN                    & 2.867 (\(0,101\%\))  \\
+        Exact duplicates που αφαιρέθηκαν            & 255.236 (\(\sim 9\%\)) \\
+        Τελικές γραμμές                             & 2.572.640            \\
+        Αρχικές στήλες                              & 79 + Label           \\
+        Στήλες που αφαιρέθηκαν                      & 31                   \\
+        Τελικές στήλες                              & 47 + Label           \\
+        Κλάσεις                                     & 15                   \\
+        Imbalance ratio (max/min)                   & \(\sim 195\,173\times\) \\
+        Parquet snapshot                            & 221,9 MB             \\
+        \bottomrule
+    \end{tabular}
+    \caption{Βασικά αποτελέσματα του Q1.}\label{tab:q1_summary}
+\end{table}
+
+%=============================================================================
+% ΚΕΦΑΛΑΙΟ 4: ΕΡΩΤΗΜΑ 2 - CLASSIFICATION
+%=============================================================================
+\chapter{Ερώτημα 2: Ταξινόμηση}
+
+\textit{Το κεφάλαιο αυτό θα συμπληρωθεί μετά την υλοποίηση του Q2.
+Αναμενόμενη δομή:}
+
+\begin{itemize}
+    \item \textbf{Μεθοδολογία}: stratified 80/20 split, StandardScaler,
+    class\_weight="balanced", cv=5 stratified k-fold.
+    \item \textbf{Μοντέλα}: Logistic Regression, Decision Tree,
+    Random Forest.
+    \item \textbf{Grid Search A}: μικρό grid (baseline hyperparameters).
+    \item \textbf{Grid Search B}: εκτεταμένο grid με regularization paths,
+    tree depth, n\_estimators.
+    \item \textbf{Αξιολόγηση}: confusion matrix, macro-F1, per-class
+    precision/recall, feature importances από το RF.
+\end{itemize}
+
+%=============================================================================
+% ΚΕΦΑΛΑΙΟ 5: ΕΡΩΤΗΜΑ 3 - CLUSTERING
+%=============================================================================
+\chapter{Ερώτημα 3: Συσταδοποίηση}
+
+\textit{Το κεφάλαιο αυτό θα συμπληρωθεί μετά την υλοποίηση του Q3.
+Αναμενόμενη δομή:}
+
+\begin{itemize}
+    \item \textbf{Preprocessing}: PCA για μείωση σε \(\sim 10\) components
+    (κρίσιμο για distance-based αλγόριθμους).
+    \item \textbf{Μοντέλα}: K-Means (με elbow/silhouette για επιλογή του
+    \(K\)), Agglomerative Hierarchical, DBSCAN.
+    \item \textbf{Αξιολόγηση}: inertia, silhouette score, Adjusted Rand
+    Index έναντι των γνωστών labels (external validation).
+    \item \textbf{Ερμηνεία}: κατά πόσο οι unsupervised συστάδες
+    αντιστοιχούν στις γνωστές επιθέσεις.
+\end{itemize}
+
+%=============================================================================
+% ΚΕΦΑΛΑΙΟ 6: ΣΥΜΠΕΡΑΣΜΑΤΑ
+%=============================================================================
+\chapter{Συμπεράσματα}
+
+\textit{Το κεφάλαιο αυτό θα ολοκληρωθεί μετά τα Q2 και Q3. Έως τώρα, τα
+βασικά συμπεράσματα του Q1 είναι:}
+
+\begin{enumerate}
+    \item \textbf{Το CIC-IDS-2017 απαιτεί προσεκτικό καθαρισμό} πριν
+    οποιοδήποτε μοντέλο: 4.376 Infs, 255.236 exact duplicates και
+    corrupted bytes στις ετικέτες των Web Attacks.
+
+    \item \textbf{Η ανισορροπία είναι ακραία} (\(\sim 195\,000:1\)). Θα
+    διαμορφώσει όλες τις επιλογές μοντελοποίησης στο Q2 (class\_weight,
+    macro-F1, stratified CV) και αξιολόγησης στο Q3.
+
+    \item \textbf{Το feature space είναι υπερ-παραμετροποιημένο}. Οι 78
+    αρχικές αριθμητικές στήλες κρύβουν 22 near-duplicates και 8 constants.
+    Μετά την αφαίρεσή τους μένουν 47 features με γνήσια διακριτική
+    πληροφορία.
+
+    \item \textbf{Η χρήση Parquet είναι κρίσιμη} για την αποδοτικότητα του
+    αγωγού: Q2/Q3 φορτώνουν το καθαρισμένο σύνολο σε \(<2\) sec αντί για
+    \(\sim 60\) sec.
+\end{enumerate}
+
+%=============================================================================
+% ΠΑΡΑΡΤΗΜΑ
+%=============================================================================
+\appendix
+
+\chapter{Οδηγίες Εγκατάστασης και Εκτέλεσης}
+
+\section{Απαιτήσεις}
+
+\begin{itemize}
+    \item Python 3.10+ (δοκιμάστηκε σε 3.12).
+    \item \(\sim\) 16 GB RAM (το full load απαιτεί \(\sim\) 4-6 GB
+    μετά το \texttt{\_optimize\_memory}).
+    \item \(\sim\) 3 GB ελεύθερου χώρου (raw CSV + Parquet cache).
+\end{itemize}
+
+\section{Εγκατάσταση}
+
+\begin{tcolorbox}[myCustomStyle={Εγκατάσταση}]
+\begin{lstlisting}[style=myBashStyle]
+# clone και venv
+git clone https://github.com/IBilba/network-intrusion-detection-ml.git
+cd network-intrusion-detection-ml
+python -m venv .venv
+source .venv/bin/activate   # ή .venv\Scripts\activate στα Windows
+
+# dependencies
+pip install -r requirements.txt
+
+# data (τοποθέτηση των 8 CSV στο data/)
+# από Kaggle: https://www.kaggle.com/datasets/cicdataset/cicids2017
+\end{lstlisting}
+\end{tcolorbox}
+
+\section{Εκτέλεση του Q1}
+
+\begin{tcolorbox}[myCustomStyle={Run}]
+\begin{lstlisting}[style=myBashStyle]
+# Εκτέλεση end-to-end (γράφει figures, CSV, Parquet)
+jupyter nbconvert --to notebook --execute notebooks/q1_eda.ipynb \
+  --output q1_eda.ipynb
+\end{lstlisting}
+\end{tcolorbox}
+
+Μετά την εκτέλεση, τα παραγόμενα αρχεία βρίσκονται σε:
+
+\begin{itemize}
+    \item \texttt{outputs/figures/}: \(5\) PNGs (label distribution,
+    histograms, boxplots, heatmap).
+    \item \texttt{outputs/results/}: \(7\) CSVs (column catalogue,
+    describe, label distribution, correlation με label, top correlated
+    pairs, removed features, final feature list).
+    \item \texttt{data/cic\_ids\_2017\_clean.parquet}: το cached clean
+    dataset για τα Q2/Q3.
+\end{itemize}
+
+\section{Αναπαραγωγιμότητα}
+
+Όλες οι στοχαστικές λειτουργίες (sampling, shuffling, CV folds) θα
+χρησιμοποιούν τον ίδιο \texttt{RANDOM\_STATE = 42} από το
+\texttt{utils/helpers.py}. Με τον ίδιο seed και το ίδιο
+σύνολο δεδομένων, όλοι οι αριθμοί του Πίνακα~\ref{tab:q1_summary} είναι
+bit-exactly αναπαραγώγιμοι.
+
+\end{document}
