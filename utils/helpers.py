@@ -12,8 +12,9 @@ from __future__ import annotations
 
 import glob
 import os
+from itertools import product
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 import numpy as np
 import pandas as pd
@@ -281,3 +282,267 @@ def find_highly_correlated_features(
                 to_drop.add(col)
                 break
     return sorted(to_drop)
+
+
+# =============================================================================
+# Q2 classification helpers — used by notebooks/q2_classification.ipynb.
+# Imports are lazy so importing utils stays cheap when only Q1 helpers are
+# needed.
+# =============================================================================
+def evaluate_classifier(y_true, y_pred) -> dict:
+    """
+    Standard multi-class classification metrics: accuracy, weighted
+    precision/recall, F1-weighted, F1-macro.
+
+    Why both F1-weighted and F1-macro:
+      - weighted reflects how the model handles the *bulk* of traffic
+        (favors majority classes).
+      - macro gives every class equal voice, exposing whether rare attack
+        types are being missed.
+    """
+    from sklearn.metrics import (
+        accuracy_score, precision_score, recall_score, f1_score,
+    )
+    return {
+        "accuracy":    accuracy_score(y_true, y_pred),
+        "precision_w": precision_score(y_true, y_pred, average="weighted", zero_division=0),
+        "recall_w":    recall_score(y_true, y_pred, average="weighted", zero_division=0),
+        "f1_weighted": f1_score(y_true, y_pred, average="weighted", zero_division=0),
+        "f1_macro":    f1_score(y_true, y_pred, average="macro", zero_division=0),
+    }
+
+
+def manual_grid_search(
+    make_estimator: Callable,
+    grid: dict,
+    X_tr, y_tr, X_va, y_va,
+    scoring: str = "f1_weighted",
+) -> tuple[dict, float, pd.DataFrame]:
+    """
+    Scenario-A grid search: for every combination in `grid`, fit a fresh
+    estimator on (X_tr, y_tr) and score on (X_va, y_va).
+
+    Uses ``estimator.set_params(**combo)`` rather than passing the combo
+    into the factory — that way grids whose keys carry Pipeline prefixes
+    (e.g. ``algo__C`` for ``Pipeline([..., ('algo', LR())])``) work the
+    same as plain-estimator grids (e.g. ``max_depth``).
+
+    Returns (best_params, best_score, full_results_df).
+    """
+    from sklearn.metrics import f1_score
+    keys = list(grid.keys())
+    rows: list[dict] = []
+    best_score = -np.inf
+    best_params: dict | None = None
+    for combo in product(*[grid[k] for k in keys]):
+        params = dict(zip(keys, combo))
+        est = make_estimator()
+        est.set_params(**params)
+        est.fit(X_tr, y_tr)
+        if scoring == "f1_weighted":
+            s = f1_score(y_va, est.predict(X_va), average="weighted", zero_division=0)
+        elif scoring == "f1_macro":
+            s = f1_score(y_va, est.predict(X_va), average="macro", zero_division=0)
+        else:
+            raise ValueError(f"unsupported scoring: {scoring}")
+        rows.append({**params, f"val_{scoring}": s})
+        if s > best_score:
+            best_score, best_params = s, params
+    results = (
+        pd.DataFrame(rows)
+        .sort_values(f"val_{scoring}", ascending=False)
+        .reset_index(drop=True)
+    )
+    return best_params, best_score, results
+
+
+def plot_confusion(
+    y_true, y_pred, labels: list[str], title: str, fname: str,
+    normalize: bool = True,
+):
+    """
+    Row-normalized confusion matrix saved under outputs/figures/.
+
+    Row-normalization is essential here: without it, the BENIGN row dwarfs
+    every rare-class row in absolute counts and we cannot see whether,
+    say, Heartbleed is being detected.
+    """
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    from sklearn.metrics import confusion_matrix
+
+    n_classes = len(labels)
+    cm = confusion_matrix(y_true, y_pred, labels=range(n_classes))
+    if normalize:
+        with np.errstate(invalid="ignore"):
+            cm_show = cm / cm.sum(axis=1, keepdims=True)
+            cm_show = np.nan_to_num(cm_show)
+        fmt, vmax, cbar_label = ".2f", 1.0, "fraction of true row"
+    else:
+        cm_show, fmt, vmax, cbar_label = cm, "d", None, "count"
+
+    fig, ax = plt.subplots(figsize=(11, 9))
+    sns.heatmap(
+        cm_show, annot=True, fmt=fmt, cmap="Blues", vmin=0, vmax=vmax,
+        xticklabels=labels, yticklabels=labels,
+        cbar_kws={"label": cbar_label}, ax=ax, annot_kws={"size": 7},
+    )
+    ax.set_xlabel("Predicted")
+    ax.set_ylabel("True")
+    ax.set_title(title)
+    plt.xticks(rotation=45, ha="right")
+    plt.yticks(rotation=0)
+    plt.tight_layout()
+    save_figure(fig, fname)
+    plt.show()
+    plt.close(fig)
+    return cm
+
+
+def plot_feature_importance(
+    model, feature_names, top_k: int, title: str, fname: str,
+) -> pd.Series:
+    """
+    Horizontal bar chart of the top-k ``model.feature_importances_``
+    values. Returns the (sorted-ascending) Series so the caller can also
+    persist it as CSV.
+    """
+    import matplotlib.pyplot as plt
+
+    imp = (
+        pd.Series(model.feature_importances_, index=feature_names)
+        .sort_values(ascending=True)
+        .tail(top_k)
+    )
+    fig, ax = plt.subplots(figsize=(8, max(4, top_k * 0.3)))
+    imp.plot(kind="barh", color="steelblue", ax=ax)
+    ax.set_xlabel("Importance")
+    ax.set_title(title)
+    plt.tight_layout()
+    save_figure(fig, fname)
+    plt.show()
+    plt.close(fig)
+    return imp
+
+
+def plot_lr_coefficients(
+    lr_model, feature_names, class_names, top_k: int,
+    title: str, fname: str,
+) -> pd.DataFrame:
+    """
+    Heatmap of Logistic Regression coefficients (classes × top-k features
+    by mean |coef| across classes).
+
+    For multinomial LR the coefficient matrix has shape
+    ``(n_classes, n_features)`` — each row tells the model how strongly
+    each feature pushes a sample *toward* that class (positive) or *away*
+    from it (negative). We pick the top-k features by mean absolute
+    coefficient so the visualization highlights the most influential
+    features.
+
+    For Pipeline-wrapped models, pass ``pipeline.named_steps['algo']``.
+    """
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
+    coef = pd.DataFrame(
+        lr_model.coef_,
+        index=list(class_names),
+        columns=list(feature_names),
+    )
+    top_features = (
+        coef.abs().mean(axis=0).sort_values(ascending=False).head(top_k).index
+    )
+    coef_top = coef[top_features]
+
+    fig, ax = plt.subplots(figsize=(max(8, top_k * 0.55),
+                                    max(5, len(class_names) * 0.4)))
+    vmax = float(coef_top.abs().values.max())
+    sns.heatmap(
+        coef_top, annot=True, fmt=".2f", cmap="RdBu_r", center=0,
+        vmin=-vmax, vmax=vmax,
+        cbar_kws={"label": "coefficient (sign = direction, |·| = strength)"},
+        ax=ax, annot_kws={"size": 7},
+    )
+    ax.set_xlabel("Feature")
+    ax.set_ylabel("Class")
+    ax.set_title(title)
+    plt.xticks(rotation=45, ha="right")
+    plt.yticks(rotation=0)
+    plt.tight_layout()
+    save_figure(fig, fname)
+    plt.show()
+    plt.close(fig)
+    return coef_top
+
+
+def plot_decision_tree(
+    tree_model, feature_names, class_names,
+    title: str, fname: str,
+    max_depth_display: int = 3,
+    figsize: tuple = (22, 11),
+):
+    """
+    Render a fitted ``DecisionTreeClassifier`` (or one tree from a
+    ``RandomForestClassifier``) using ``sklearn.tree.plot_tree``.
+
+    For trees deeper than ~4 levels the full graph is unreadable on a
+    PDF page; we limit the *display* to ``max_depth_display`` levels via
+    sklearn's built-in ``max_depth`` parameter on ``plot_tree``. The
+    underlying model is unaffected — this only crops what gets drawn.
+
+    Each box shows: split rule (e.g. ``Destination Port <= 53.5``), the
+    impurity (gini/entropy), the per-class sample weights, and the
+    majority predicted class (color-coded).
+    """
+    import matplotlib.pyplot as plt
+    from sklearn.tree import plot_tree
+
+    fig, ax = plt.subplots(figsize=figsize)
+    plot_tree(
+        tree_model,
+        feature_names=list(feature_names),
+        class_names=list(class_names),
+        max_depth=max_depth_display,
+        filled=True,
+        rounded=True,
+        impurity=True,
+        proportion=False,
+        fontsize=8,
+        ax=ax,
+    )
+    ax.set_title(
+        f"{title}\n(visualizing top {max_depth_display} levels — full tree may be deeper)"
+    )
+    plt.tight_layout()
+    save_figure(fig, fname)
+    plt.show()
+    plt.close(fig)
+
+
+def plot_one_forest_tree(
+    rf_model, tree_index: int, feature_names, class_names,
+    title: str, fname: str,
+    max_depth_display: int = 3,
+):
+    """
+    Plot a single tree from a fitted ``RandomForestClassifier``. Useful
+    to *show* what one of the forest's voters looks like — keep in mind
+    each tree was trained on its own bootstrap sample with random
+    feature subsets at each split, so trees disagree.
+    """
+    if not hasattr(rf_model, "estimators_"):
+        raise AttributeError("rf_model has no estimators_ — was it fitted?")
+    if not (0 <= tree_index < len(rf_model.estimators_)):
+        raise IndexError(
+            f"tree_index {tree_index} out of range [0, {len(rf_model.estimators_)})"
+        )
+    plot_decision_tree(
+        rf_model.estimators_[tree_index],
+        feature_names=feature_names,
+        class_names=class_names,
+        title=f"{title} — tree #{tree_index} of {len(rf_model.estimators_)}",
+        fname=fname,
+        max_depth_display=max_depth_display,
+    )
+

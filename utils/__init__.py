@@ -21,6 +21,14 @@ from utils.helpers import (
     top_correlated_pairs,
     find_low_variance_features,
     find_highly_correlated_features,
+    # Q2 classification helpers
+    evaluate_classifier,
+    manual_grid_search,
+    plot_confusion,
+    plot_feature_importance,
+    plot_lr_coefficients,
+    plot_decision_tree,
+    plot_one_forest_tree,
 )
 
 __all__ = [
@@ -39,4 +47,11 @@ __all__ = [
     "top_correlated_pairs",
     "find_low_variance_features",
     "find_highly_correlated_features",
+    "evaluate_classifier",
+    "manual_grid_search",
+    "plot_confusion",
+    "plot_feature_importance",
+    "plot_lr_coefficients",
+    "plot_decision_tree",
+    "plot_one_forest_tree",
 ]
