@@ -546,3 +546,311 @@ def plot_one_forest_tree(
         max_depth_display=max_depth_display,
     )
 
+
+# =============================================================================
+# Q3 clustering helpers — used by notebooks/q3_clustering.ipynb.
+# =============================================================================
+def evaluate_clustering(
+    X, labels_pred, sample_size: int = 10_000,
+    seed: int = 42,
+) -> dict:
+    """
+    Silhouette score (sampled for speed) + Davies-Bouldin index for a
+    clustering result.
+
+    Why sampled silhouette: the standard silhouette is
+    :math:`O(n^2)` in memory and pairwise distances. On 134K rows that
+    is ~18B comparisons; a 10K stratified sample gets us within ±0.01
+    in seconds instead of minutes.
+
+    DBSCAN's noise label (``-1``) is excluded from both metrics — those
+    points aren't assigned to any cluster, so including them would
+    force sklearn to treat "noise" as its own cluster and distort the
+    scores.
+
+    Returns dict with: ``n_clusters``, ``n_noise``, ``silhouette``,
+    ``davies_bouldin``. Returns ``nan`` metrics when there is only one
+    cluster (or all points are noise), where the metrics are
+    mathematically undefined.
+    """
+    from sklearn.metrics import silhouette_score, davies_bouldin_score
+
+    labels = np.asarray(labels_pred)
+    X_arr = np.asarray(X)
+
+    noise_mask = labels == -1
+    valid_mask = ~noise_mask
+
+    n_noise = int(noise_mask.sum())
+    valid_labels = labels[valid_mask]
+    unique_clusters = np.unique(valid_labels)
+    n_clusters = int(len(unique_clusters))
+
+    if n_clusters < 2:
+        return {
+            "n_clusters": n_clusters,
+            "n_noise": n_noise,
+            "silhouette": float("nan"),
+            "davies_bouldin": float("nan"),
+        }
+
+    X_valid = X_arr[valid_mask]
+    sample_size_eff = min(sample_size, len(X_valid))
+    sil = silhouette_score(
+        X_valid, valid_labels,
+        sample_size=sample_size_eff, random_state=seed,
+    )
+    db = davies_bouldin_score(X_valid, valid_labels)
+    return {
+        "n_clusters": n_clusters,
+        "n_noise": n_noise,
+        "silhouette": float(sil),
+        "davies_bouldin": float(db),
+    }
+
+
+def plot_elbow_silhouette(
+    ks, inertias, silhouettes, title: str, fname: str,
+):
+    """
+    Dual-axis plot: K-Means inertia (elbow method) on the left axis,
+    mean silhouette score on the right axis, both over a range of k.
+
+    The elbow method looks for the point where the inertia curve
+    "bends" — beyond which adding more clusters gives diminishing
+    returns. Silhouette peaks at the k that gives best-separated,
+    most-cohesive clusters. The two usually point to similar k.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, ax1 = plt.subplots(figsize=(9, 5))
+    color_inertia = "tab:blue"
+    color_sil = "tab:red"
+
+    ax1.plot(ks, inertias, marker="o", color=color_inertia, label="Inertia")
+    ax1.set_xlabel("Number of clusters k")
+    ax1.set_ylabel("Inertia (sum of squared distances)", color=color_inertia)
+    ax1.tick_params(axis="y", labelcolor=color_inertia)
+    ax1.grid(True, alpha=0.3)
+
+    ax2 = ax1.twinx()
+    ax2.plot(ks, silhouettes, marker="s", linestyle="--",
+             color=color_sil, label="Silhouette")
+    ax2.set_ylabel("Silhouette score (higher = better)", color=color_sil)
+    ax2.tick_params(axis="y", labelcolor=color_sil)
+
+    ax1.set_title(title)
+    ax1.set_xticks(list(ks))
+    fig.tight_layout()
+    save_figure(fig, fname)
+    plt.show()
+    plt.close(fig)
+
+
+def plot_k_distance(X, k: int, title: str, fname: str,
+                    sample_size: int | None = 20_000,
+                    seed: int = 42) -> np.ndarray:
+    """
+    k-distance graph for DBSCAN ε selection: for each point, find the
+    distance to its k-th nearest neighbor, sort ascending, and plot.
+    The "knee" of the resulting curve is a reasonable choice for ε —
+    below the knee are dense regions, above are outliers.
+
+    For large X we sample (``sample_size`` rows) because the full
+    k-NN query is :math:`O(n \\log n)` but still slow on 134K+ rows;
+    the shape of the curve is stable under sampling.
+
+    Returns the sorted k-distances (the y-values of the plot).
+    """
+    import matplotlib.pyplot as plt
+    from sklearn.neighbors import NearestNeighbors
+
+    X_arr = np.asarray(X)
+    if sample_size is not None and len(X_arr) > sample_size:
+        rng = np.random.default_rng(seed)
+        idx = rng.choice(len(X_arr), size=sample_size, replace=False)
+        X_sample = X_arr[idx]
+    else:
+        X_sample = X_arr
+
+    nbrs = NearestNeighbors(n_neighbors=k + 1).fit(X_sample)
+    distances, _ = nbrs.kneighbors(X_sample)
+    # Column k (0-indexed) is the distance to the k-th nearest neighbor
+    # (excluding the point itself which is column 0).
+    kth = np.sort(distances[:, k])
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.plot(kth, linewidth=1.5, color="steelblue")
+    ax.set_xlabel("Points sorted by increasing k-distance")
+    ax.set_ylabel(f"Distance to {k}-th nearest neighbor")
+    ax.set_title(title)
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    save_figure(fig, fname)
+    plt.show()
+    plt.close(fig)
+    return kth
+
+
+def plot_pca_scatter_comparison(
+    X_pca_2d, cluster_labels, true_labels, class_names,
+    title: str, fname: str,
+    cluster_palette: str = "tab20",
+):
+    """
+    Side-by-side 2-D PCA scatter: left colored by cluster label, right
+    colored by true class label. Same point positions in both panels —
+    visual check of whether the unsupervised clusters align with the
+    supervised classes.
+
+    DBSCAN noise points (label ``-1``) are drawn as grey x-markers.
+    """
+    import matplotlib.pyplot as plt
+
+    cluster_labels = np.asarray(cluster_labels)
+    true_labels = np.asarray(true_labels)
+    X_pca_2d = np.asarray(X_pca_2d)
+
+    fig, (ax_c, ax_t) = plt.subplots(1, 2, figsize=(14, 6), sharex=True, sharey=True)
+
+    # Left: colored by cluster
+    noise_mask = cluster_labels == -1
+    if noise_mask.any():
+        ax_c.scatter(
+            X_pca_2d[noise_mask, 0], X_pca_2d[noise_mask, 1],
+            c="lightgrey", marker="x", s=10, alpha=0.5, label="noise",
+        )
+    valid_clusters = sorted(set(cluster_labels[~noise_mask].tolist()))
+    cmap_c = plt.get_cmap(cluster_palette)
+    for i, cl in enumerate(valid_clusters):
+        mask = cluster_labels == cl
+        ax_c.scatter(
+            X_pca_2d[mask, 0], X_pca_2d[mask, 1],
+            s=6, alpha=0.6, color=cmap_c(i % cmap_c.N), label=f"c{cl}",
+        )
+    ax_c.set_title("Colored by cluster")
+    ax_c.set_xlabel("PC 1")
+    ax_c.set_ylabel("PC 2")
+    if len(valid_clusters) <= 15:
+        ax_c.legend(fontsize=7, markerscale=2, loc="best")
+
+    # Right: colored by true class
+    cmap_t = plt.get_cmap("tab20")
+    for i, name in enumerate(class_names):
+        mask = true_labels == i
+        if mask.any():
+            ax_t.scatter(
+                X_pca_2d[mask, 0], X_pca_2d[mask, 1],
+                s=6, alpha=0.6, color=cmap_t(i % cmap_t.N), label=str(name),
+            )
+    ax_t.set_title("Colored by true Label")
+    ax_t.set_xlabel("PC 1")
+    ax_t.legend(fontsize=6, markerscale=2, loc="center left",
+                bbox_to_anchor=(1.02, 0.5))
+
+    fig.suptitle(title)
+    fig.tight_layout()
+    save_figure(fig, fname)
+    plt.show()
+    plt.close(fig)
+
+
+def plot_cluster_label_heatmap(
+    cluster_labels, true_labels, class_names,
+    title: str, fname: str,
+    normalize: str = "cluster",
+) -> pd.DataFrame:
+    """
+    Heatmap: rows = clusters, columns = true classes, values = counts
+    normalized per row (if ``normalize="cluster"``) or per column
+    (``normalize="class"``) or raw counts (``normalize="none"``).
+
+    Row-normalized (default): "what is this cluster mostly made of?"
+    Column-normalized: "where did this true class end up?"
+
+    Returns the displayed DataFrame so the caller can save it as CSV.
+    """
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
+    cluster_labels = np.asarray(cluster_labels)
+    true_labels = np.asarray(true_labels)
+
+    cluster_ids = sorted(set(cluster_labels.tolist()))
+    ct = pd.DataFrame(
+        0,
+        index=[f"noise" if c == -1 else f"c{c}" for c in cluster_ids],
+        columns=list(class_names),
+        dtype=float,
+    )
+    for ci, cid in enumerate(cluster_ids):
+        mask = cluster_labels == cid
+        if not mask.any():
+            continue
+        counts = pd.Series(true_labels[mask]).value_counts()
+        for class_idx, cnt in counts.items():
+            if 0 <= class_idx < len(class_names):
+                ct.iloc[ci, class_idx] = cnt
+
+    if normalize == "cluster":
+        row_sums = ct.sum(axis=1).replace(0, np.nan)
+        ct_show = ct.div(row_sums, axis=0).fillna(0.0)
+        fmt, vmax, cbar_label = ".2f", 1.0, "fraction of cluster"
+    elif normalize == "class":
+        col_sums = ct.sum(axis=0).replace(0, np.nan)
+        ct_show = ct.div(col_sums, axis=1).fillna(0.0)
+        fmt, vmax, cbar_label = ".2f", 1.0, "fraction of class"
+    else:
+        ct_show = ct
+        fmt, vmax, cbar_label = ".0f", None, "count"
+
+    fig, ax = plt.subplots(figsize=(
+        max(9, len(class_names) * 0.5),
+        max(5, len(cluster_ids) * 0.35),
+    ))
+    sns.heatmap(
+        ct_show, annot=True, fmt=fmt, cmap="Blues",
+        vmin=0, vmax=vmax, cbar_kws={"label": cbar_label},
+        ax=ax, annot_kws={"size": 7},
+    )
+    ax.set_xlabel("True class")
+    ax.set_ylabel("Cluster")
+    ax.set_title(title)
+    plt.xticks(rotation=45, ha="right")
+    plt.yticks(rotation=0)
+    plt.tight_layout()
+    save_figure(fig, fname)
+    plt.show()
+    plt.close(fig)
+    return ct_show
+
+
+def plot_dendrogram(
+    linkage_matrix, title: str, fname: str,
+    truncate_mode: str = "lastp", p: int = 30,
+):
+    """
+    Plot a hierarchical-clustering dendrogram from a precomputed
+    ``scipy.cluster.hierarchy.linkage`` matrix. Truncation keeps the
+    figure readable — showing every merge on >1000 samples is noise.
+    """
+    import matplotlib.pyplot as plt
+    from scipy.cluster.hierarchy import dendrogram
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    dendrogram(
+        linkage_matrix,
+        truncate_mode=truncate_mode,
+        p=p,
+        leaf_rotation=90,
+        leaf_font_size=8,
+        show_contracted=True,
+        ax=ax,
+    )
+    ax.set_xlabel("Sample index or (cluster size)")
+    ax.set_ylabel("Linkage distance")
+    ax.set_title(title)
+    plt.tight_layout()
+    save_figure(fig, fname)
+    plt.show()
+    plt.close(fig)

@@ -29,6 +29,13 @@ from utils.helpers import (
     plot_lr_coefficients,
     plot_decision_tree,
     plot_one_forest_tree,
+    # Q3 clustering helpers
+    evaluate_clustering,
+    plot_elbow_silhouette,
+    plot_k_distance,
+    plot_pca_scatter_comparison,
+    plot_cluster_label_heatmap,
+    plot_dendrogram,
 )
 
 __all__ = [
@@ -54,4 +61,10 @@ __all__ = [
     "plot_lr_coefficients",
     "plot_decision_tree",
     "plot_one_forest_tree",
+    "evaluate_clustering",
+    "plot_elbow_silhouette",
+    "plot_k_distance",
+    "plot_pca_scatter_comparison",
+    "plot_cluster_label_heatmap",
+    "plot_dendrogram",
 ]

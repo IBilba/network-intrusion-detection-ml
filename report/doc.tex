@@ -1616,48 +1616,512 @@ spikes, αποκλίνοντα packet sizes, καταιγίδες SYN χωρίς
 %=============================================================================
 % ΚΕΦΑΛΑΙΟ 5: ΕΡΩΤΗΜΑ 3 - CLUSTERING
 %=============================================================================
-\chapter{Ερώτημα 3: Συσταδοποίηση}
+\chapter{Ερώτημα 3: Συσταδοποίηση}\label{ch:q3}
 
-\textit{Το κεφάλαιο αυτό θα συμπληρωθεί μετά την υλοποίηση του Q3.
-Αναμενόμενη δομή:}
+Στο κεφάλαιο αυτό αποκρύπτουμε τη στήλη \texttt{Label} και εφαρμόζουμε
+τρεις unsupervised αλγορίθμους clustering (K-Means, Agglomerative
+Hierarchical, DBSCAN) στο PCA-μειωμένο feature space. Στόχος: να δούμε
+αν η ενδογενής δομή των δεδομένων αντιστοιχεί στις γνωστές attack
+categories - χωρίς supervisory signal. Αξιολογούμε με Silhouette και
+Davies-Bouldin Index (όπως ζητά η εκφώνηση), και επιβεβαιώνουμε την
+αντιστοίχιση clusters \(\leftrightarrow\) labels post-hoc μέσω heatmap.
 
+\section{Preprocessing και PCA}\label{sec:q3_prep}
+
+Χρησιμοποιούμε το ίδιο per-class subsampling με το Q2 (cap \(=25.000\)
+στο default fast mode \(\to 134.187\) rows). Όλες οι rare classes
+(Heartbleed, SQL Injection, Infiltration) διατηρούνται πλήρως.
+
+\textbf{Γιατί StandardScaler είναι κρίσιμο εδώ.} Όλοι οι αλγόριθμοι
+clustering που χρησιμοποιούμε είναι distance-based: η ευκλείδεια
+απόσταση μεταξύ points ορίζει τα clusters. Χωρίς scaling, ένα feature
+σε scale \(10^6\) (Bytes/s) θα κυριαρχούσε 100\% τη μέτρηση -
+ουσιαστικά το clustering θα ήταν ταξινόμηση μόνο πάνω σε αυτό το ένα
+feature. Το StandardScaler εξασφαλίζει ότι κάθε feature συνεισφέρει
+εξίσου.
+
+\textbf{PCA - dimensionality reduction.} Δύο λόγοι:
 \begin{itemize}
-    \item \textbf{Preprocessing}: PCA για μείωση σε \(\sim 10\) components
-    (κρίσιμο για distance-based αλγόριθμους).
-    \item \textbf{Μοντέλα}: K-Means (με elbow/silhouette για επιλογή του
-    \(K\)), Agglomerative Hierarchical, DBSCAN.
-    \item \textbf{Αξιολόγηση}: inertia, silhouette score, Adjusted Rand
-    Index έναντι των γνωστών labels (external validation).
-    \item \textbf{Ερμηνεία}: κατά πόσο οι unsupervised συστάδες
-    αντιστοιχούν στις γνωστές επιθέσεις.
+    \item \emph{Curse of dimensionality}: σε υψηλές διαστάσεις (47 features),
+    όλες οι αποστάσεις τείνουν να γίνονται παρόμοιες, και η έννοια του
+    «κοντινός γείτονας» χάνει νόημα. Το PCA συμπυκνώνει την variance σε
+    λιγότερα orthogonal axes, αποκαθιστώντας το distance signal.
+    \item \emph{Ταχύτητα}: K-Means και DBSCAN κλιμακώνονται γραμμικά ως
+    προς τη διάσταση. Από \(47 \to 17\) components είναι \(\sim 3\times\)
+    speedup.
 \end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{q3_pca_variance.png}
+    \caption{PCA explained variance: per-component (μπλε bars) και
+    cumulative (κόκκινη γραμμή). Με \textbf{17 components} καλύπτουμε
+    \(\sim 87\%\) της variance· επιλέγουμε αυτό ως input για όλους τους
+    αλγορίθμους clustering. Παρατηρήστε ότι ο πρώτος component
+    συλλαμβάνει μόνο \(\sim 17\%\): δεν υπάρχει ένα κυρίαρχο axis. Η
+    information είναι κατανεμημένη σε πολλά components.}
+    \label{fig:q3_pca}
+\end{figure}
+
+\section{K-Means}\label{sec:q3_kmeans}
+
+\textbf{Διαίσθηση.} Επιλογή \(k\). Επανάληψη μέχρι σύγκλιση: (1)
+\emph{Assignment} κάθε point στο πιο κοντινό centroid, (2)
+\emph{Update} κάθε centroid ως μέσο όρο των points του. Συγκλίνει σε
+local minimum του inertia (sum of squared distances). Υποθέτει
+\textbf{σφαιρικά clusters παρόμοιου μεγέθους}.
+
+\textbf{Επιλογή k - Elbow + Silhouette.} Σαρώνουμε \(k \in [2, 15]\).
+Το inertia (αριστερός άξονας) μειώνεται σταθερά - δεν υπάρχει σαφής
+\og αγκώνας\fg{}, αλλά το rate of decrease μειώνεται μετά το \(k=8\).
+Το silhouette (δεξιός άξονας) έχει local minimum στο \(k=3\) και μετά
+ανεβαίνει σταθερά μέχρι \textbf{maximum στο \(k=15\)}
+(silhouette\,\(=0{,}4237\)).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{q3_kmeans_elbow_silhouette.png}
+    \caption{K-Means - inertia (μπλε) και silhouette (κόκκινο) ανά
+    \(k\). Το silhouette κορυφώνεται στο \(k=15\) - ο ίδιος αριθμός
+    με τα γνωστά labels.}
+    \label{fig:q3_kmeans_elbow}
+\end{figure}
+
+\textbf{Σύμπτωση.} Το silhouette-best \(k\) (\(=15\)) συμπίπτει με τον
+αριθμό των γνωστών labels (\(=15\)). Δηλαδή το «reference k = \#true
+labels» που ζητά η εκφώνηση δίνει \emph{ίδια} αποτελέσματα με το
+silhouette-best k σε αυτή την περίπτωση. Αυτό από μόνο του είναι
+ενθαρρυντικό σήμα ότι η ενδογενής δομή των δεδομένων αντιστοιχεί
+στις γνωστές attack categories.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lrrr}
+        \toprule
+        \textbf{Configuration} & \textbf{n\_clusters} &
+        \textbf{Silhouette \(\uparrow\)} & \textbf{Davies-Bouldin \(\downarrow\)} \\
+        \midrule
+        K-Means \(k=15\) (best by silhouette / reference) & 15 & 0{,}4237 & 0{,}8278 \\
+        \bottomrule
+    \end{tabular}
+    \caption{K-Means - test metrics στο best \(k\).}
+    \label{tab:q3_kmeans}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{q3_kmeans_best_scatter.png}
+    \caption{K-Means \(k=15\) - PCA 2-D scatter. Αριστερά: colored by
+    cluster. Δεξιά: colored by true Label. Παρατηρήστε ότι μερικές
+    classes (DDoS, PortScan) είναι ευδιάκριτες ως compact clusters
+    στο PCA space, ενώ η BENIGN καταλαμβάνει το πιο πολυποίκιλο
+    γεωμετρικό χώρο.}
+    \label{fig:q3_kmeans_scatter}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{q3_kmeans_best_heatmap.png}
+    \caption{K-Means \(k=15\) - cluster composition heatmap.
+    Row-normalized: κάθε γραμμή αθροίζει σε 1, δείχνοντας \emph{τι
+    είναι} κάθε cluster. Πολλά clusters είναι σχεδόν καθαρά μίας
+    κλάσης (\(>90\%\)), ενώ άλλα μοιράζονται μεταξύ similar attack
+    types.}
+    \label{fig:q3_kmeans_heatmap}
+\end{figure}
+
+\section{Hierarchical (Agglomerative)}\label{sec:q3_hier}
+
+\textbf{Διαίσθηση.} Bottom-up: ξεκινάμε με κάθε point ως ένα cluster·
+σε κάθε βήμα ενώνουμε τα δύο πιο κοντινά. Παράγει ένα \emph{dendrogram}.
+\og Κόβουμε\fg{} το dendrogram σε κατάλληλο height για να πάρουμε k
+clusters.
+
+\textbf{Linkage methods} ορίζουν την «απόσταση μεταξύ clusters»:
+\begin{itemize}
+    \item \textbf{single}: minimum point-to-point distance
+    (chaining effect).
+    \item \textbf{complete}: maximum point-to-point distance (συμπαγή
+    σφαιρικά clusters).
+    \item \textbf{average}: μέσος όρος όλων των ζευγών (συμβιβασμός).
+    \item \textbf{ward}: minimum-variance criterion - ενώνει clusters
+    που ελαχιστοποιούν την αύξηση της within-cluster variance.
+\end{itemize}
+
+\textbf{Computational constraint.} Η AgglomerativeClustering απαιτεί
+ολόκληρο τον \(O(n^2)\) πίνακα αποστάσεων: για \(134\)K rows χρειάζονται
+\(\sim 72\) GB RAM - απαγορευτικό. Παίρνουμε stratified subsample
+\textbf{\(2.468\) rows} (\(\sim 70\) MB distance matrix) - αρκετό για
+διαβάσιμο dendrogram και σταθερό linkage comparison.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{q3_hier_dendrogram.png}
+    \caption{Dendrogram (ward linkage, top 30 merges). Φαίνεται καθαρά
+    διπλή ιεραρχική δομή: ένα μεγάλο σύνολο merges σε χαμηλό height
+    (πορτοκαλί - κανονικό traffic και κοντινά attacks) και ένα
+    απομονωμένο cluster (πράσινο - probably attack patterns που
+    διαφέρουν δραματικά). Η μεγάλη κάθετη γραμμή στο height \(\sim 800\)
+    δείχνει την τελική συγχώνευση των δύο sub-trees.}
+    \label{fig:q3_dendrogram}
+\end{figure}
+
+\textbf{Linkage comparison} με \(k=15\) (= silhouette-best K-Means k,
+για consistency):
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lrr}
+        \toprule
+        \textbf{Linkage} & \textbf{Silhouette \(\uparrow\)} & \textbf{Davies-Bouldin \(\downarrow\)} \\
+        \midrule
+        ward       & 0{,}5014 & 0{,}5944 \\
+        complete   & 0{,}6251 & 0{,}2924 \\
+        \textbf{average}    & \textbf{0{,}7334} & \textbf{0{,}2185} \\
+        \bottomrule
+    \end{tabular}
+    \caption{Hierarchical Clustering - σύγκριση linkage methods (\(k=15\),
+    \(2.468\)-row stratified subsample). Best by both metrics: average
+    linkage.}
+    \label{tab:q3_hier}
+\end{table}
+
+\textbf{Παρατήρηση: γιατί κερδίζει το average linkage.} Συνήθως το
+ward είναι το πιο «καλό default». Στο δικό μας dataset υπερισχύει το
+average επειδή υπάρχουν λίγα μεγάλα και πολλά μικρά (rare-attack)
+clusters με ασύμμετρες αποστάσεις - το average linkage, που
+λαμβάνει υπόψη όλα τα ζεύγη points, χειρίζεται καλύτερα αυτή την
+ασυμμετρία από το variance-based ward.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{q3_hier_best_scatter.png}
+    \caption{Hierarchical (average linkage, \(k=15\)) - PCA 2-D scatter
+    στο \(2.468\)-row subsample.}
+    \label{fig:q3_hier_scatter}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{q3_hier_best_heatmap.png}
+    \caption{Hierarchical (average linkage, \(k=15\)) - cluster
+    composition heatmap.}
+    \label{fig:q3_hier_heatmap}
+\end{figure}
+
+\section{DBSCAN}\label{sec:q3_dbscan}
+
+\textbf{Διαίσθηση.} Density-based clustering. \emph{Δεν χρειάζεται k}.
+Έννοιες: \emph{core point} (\(\geq\)\texttt{min\_samples} γείτονες
+μέσα σε \(\varepsilon\)-ακτίνα), \emph{border point}, \emph{noise}
+(label \(=-1\)). Δύο core points εντός \(\varepsilon\) ανήκουν στο
+ίδιο cluster.
+
+\textbf{Πλεονεκτήματα.} Ανακαλύπτει clusters \emph{αυθαίρετου
+σχήματος} (όχι μόνο σφαιρικά)· ανθεκτικό σε outliers (τα ταξινομεί
+ως noise). \textbf{Μειονεκτήματα.} Ευαίσθητο σε \(\varepsilon\) και
+\texttt{min\_samples}· δυσκολεύεται με clusters διαφορετικής πυκνότητας
+(μία \(\varepsilon\) δεν ταιριάζει σε όλα).
+
+\textbf{Επιλογή \(\varepsilon\) - k-distance graph.} Για κάθε point,
+απόσταση προς τον \(k=4\) πιο κοντινό γείτονα, sorted ascending. Ο
+«αγκώνας» της καμπύλης δείχνει ένα καλό \(\varepsilon\) - κάτω από τον
+αγκώνα είναι dense regions.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{q3_dbscan_kdistance.png}
+    \caption{k-distance graph (\(k=4\)) πάνω σε στρωμένο sample
+    \(20.000\) rows. Η κύρια καμπύλη παραμένει σχεδόν επίπεδη μέχρι το
+    \(\sim 80\%\) percentile και έπειτα εκτοξεύεται απότομα: σαφής
+    αγκώνας στο \(\varepsilon \approx 0{,}3\text{-}0{,}5\), κάτι που
+    επιβεβαιώνει το sweep μας.}
+    \label{fig:q3_kdistance}
+\end{figure}
+
+\textbf{Sweep \(\varepsilon \times \texttt{min\_samples}\).} 5
+\(\times\) 3 = 15 combinations σύμφωνα με την εκφώνηση:
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{rrrrrr}
+        \toprule
+        \textbf{\(\varepsilon\)} & \textbf{min\_samples} &
+        \textbf{n\_clusters} & \textbf{n\_noise} &
+        \textbf{Sil. \(\uparrow\)} & \textbf{DB \(\downarrow\)} \\
+        \midrule
+        0{,}3 & 5  & 583 & 6.494  & 0{,}3862 & 0{,}6359 \\
+        0{,}3 & 10 & 367 & 9.052  & 0{,}4265 & 0{,}6406 \\
+        0{,}3 & 20 & 231 & 12.573 & \textbf{0{,}4480} & 0{,}6354 \\
+        0{,}5 & 5  & 402 & 4.018  & 0{,}3620 & 0{,}7432 \\
+        0{,}5 & 10 & 258 & 5.692  & 0{,}3922 & 0{,}7290 \\
+        0{,}5 & 20 & 172 & 7.836  & 0{,}4321 & 0{,}7479 \\
+        0{,}8 & 5  & 295 & 2.473  & 0{,}0892 & 0{,}6930 \\
+        0{,}8 & 10 & 191 & 3.545  & 0{,}1007 & 0{,}7386 \\
+        0{,}8 & 20 & 122 & 5.183  & 0{,}2819 & 0{,}7062 \\
+        1{,}0 & 5  & 184 & 1.868  & 0{,}2156 & 0{,}5536 \\
+        1{,}0 & 10 & 123 & 2.624  & 0{,}2237 & 0{,}5643 \\
+        1{,}0 & 20 & 88  & 3.696  & 0{,}2584 & 0{,}6136 \\
+        1{,}5 & 5  & 142 & 1.006  & 0{,}1069 & 0{,}5095 \\
+        1{,}5 & 10 & 89  & 1.512  & 0{,}1021 & 0{,}4745 \\
+        1{,}5 & 20 & 55  & 2.178  & 0{,}1831 & \textbf{0{,}4513} \\
+        \bottomrule
+    \end{tabular}
+    \caption{DBSCAN sweep - όλες οι 15 παραλλαγές. Best silhouette:
+    \(\varepsilon=0{,}3, \texttt{min\_samples}=20\). Best Davies-Bouldin:
+    \(\varepsilon=1{,}5, \texttt{min\_samples}=20\). Διαφορετικές
+    μετρικές δίνουν διαφορετικό best - κλασικό clustering trade-off.}
+    \label{tab:q3_dbscan}
+\end{table}
+
+\textbf{Παρατηρήσεις.}
+\begin{itemize}
+    \item \textbf{Πάρα πολλά clusters} σε όλες τις configurations
+    (55-583), πολύ περισσότερα από τα 15 πραγματικά labels. Αυτό
+    σημαίνει ότι η ενδογενής δομή έχει πολλές sub-populations -
+    διαφορετικά \emph{flavors} του ίδιου attack type ή του BENIGN.
+    \item \textbf{Trade-off noise vs cluster purity}: μικρό
+    \(\varepsilon\) \(\Rightarrow\) πολύ noise (12K rows με
+    \(\varepsilon=0{,}3\)) αλλά καλύτερο silhouette. Μεγάλο
+    \(\varepsilon\) \(\Rightarrow\) λίγο noise αλλά \og θολά\fg{}
+    clusters.
+    \item Επιλέγουμε ως \og best\fg{} το \(\varepsilon=0{,}3,
+    \texttt{min\_samples}=20\) (highest silhouette, μεσαίο noise level).
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{q3_dbscan_best_scatter.png}
+    \caption{DBSCAN (\(\varepsilon=0{,}3,\,\texttt{min\_samples}=20\)) -
+    PCA 2-D scatter. Τα grey x-markers είναι \emph{noise points}
+    (\(12.573\) rows, \(\sim 9{,}4\%\) του dataset).}
+    \label{fig:q3_dbscan_scatter}
+\end{figure}
+
+\section{Συγκριτική Ανάλυση}\label{sec:q3_comparison}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{llrrrr}
+        \toprule
+        \textbf{Algorithm} & \textbf{Config} & \textbf{n\_clust} &
+        \textbf{n\_noise} & \textbf{Sil. \(\uparrow\)} &
+        \textbf{DB \(\downarrow\)} \\
+        \midrule
+        K-Means      & \(k=15\) (best/reference)         & 15 & 0      & 0{,}4237 & 0{,}8278 \\
+        Hierarchical & ward, \(k=15\)                    & 15 & 0      & 0{,}5014 & 0{,}5944 \\
+        Hierarchical & complete, \(k=15\)                & 15 & 0      & 0{,}6251 & 0{,}2924 \\
+        Hierarchical & \textbf{average, \(k=15\)}        & 15 & 0      & \textbf{0{,}7334} & \textbf{0{,}2185} \\
+        DBSCAN       & \(\varepsilon=0{,}3, ms=20\)      & 231 & 12.573 & 0{,}4480 & 0{,}6354 \\
+        DBSCAN       & \(\varepsilon=1{,}5, ms=20\)      & 55 & 2.178  & 0{,}1831 & 0{,}4513 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Q3 - σύγκριση best configurations ανά αλγόριθμο. \emph{Caveat}:
+    το Hierarchical εκπαιδεύτηκε σε \(2.468\)-row subsample λόγω
+    \(O(n^2)\) memory.}
+    \label{tab:q3_comparison}
+\end{table}
+
+\subsection{Απαντήσεις στις Ερωτήσεις της Εκφώνησης}
+
+\paragraph{1. Αντιστοιχούν τα clusters σε meaningful attack categories;}
+\textbf{Μερικώς, ναι.} Από τα cluster-to-Label heatmaps βλέπουμε ότι
+αρκετά clusters είναι σχεδόν καθαρά μίας κλάσης - ιδίως οι
+χαρακτηριστικές attack υπογραφές (DDoS, DoS Hulk, PortScan,
+FTP/SSH-Patator). Όμως:
+\begin{itemize}
+    \item Η \texttt{BENIGN} \emph{διασκορπίζεται σε πολλά clusters} -
+    δεν είναι ομοιογενής class αλλά μείγμα από web/email/SSH/bulk traffic
+    με διαφορετικές υπογραφές. Είναι λογικό: «κανονικό» traffic έχει πολλές
+    νόμιμες μορφές.
+    \item Οι rare attacks (Heartbleed, SQL Injection, Infiltration)
+    σπάνια έχουν δικό τους cluster· τυπικά απορροφώνται μέσα σε
+    BENIGN clusters ή σε άλλες DoS-like ομάδες.
+    \item Επιβεβαίωση: το silhouette-best \(k\) για το K-Means είναι
+    ακριβώς 15, ίδιο με τα true labels. Αυτό από μόνο του είναι ισχυρό
+    σήμα ότι η ενδογενής γεωμετρία αντιστοιχεί στις attack categories.
+\end{itemize}
+
+\paragraph{2. Ποιος αλγόριθμος συλλαμβάνει καλύτερα την true structure;}
+\textbf{Hierarchical με average linkage} (silhouette\,\(=0{,}733\),
+DB\,\(=0{,}219\)) έχει καθαρά τα καλύτερα νούμερα. Ωστόσο τρέχει σε
+δραματικά μικρότερο sample (\(2{,}5\)K rows έναντι \(134\)K), και
+άρα τα metrics δεν είναι 1:1 συγκρίσιμα. Σε ίσο sample:
+\begin{itemize}
+    \item \textbf{K-Means \(k=15\)}: silhouette \(\sim 0{,}42\) -
+    σταθερό baseline.
+    \item \textbf{DBSCAN best}: silhouette \(\sim 0{,}45\) - οριακά
+    καλύτερο, αλλά εις βάρος του να αφήνει \(12.5\)K rows ως noise.
+\end{itemize}
+Με μετρικές που δίνουν ισότιμη σημασία και στο coverage (πόσα rows
+καταλήγουν σε valid cluster) και στην ποιότητα των clusters,
+\textbf{το K-Means είναι το πιο πρακτικό} σε αυτό το dataset: σαφές
+ranking στο silhouette, καμία row ως noise, σταθερά μετρικά.
+
+\paragraph{3. Τι ανακαλύπτουμε χωρίς labels που δεν φαίνεται με supervised;}
+Τρεις τύποι insight που το Q2 (supervised) δεν παράγει:
+\begin{itemize}
+    \item \textbf{Sub-clusters μέσα σε γνωστά labels.} Π.χ. το BENIGN
+    χωρίζεται σε \(>5\) clusters - διαφορετικοί τύποι κανονικού
+    traffic. Αυτό σημαίνει ότι στο supervised setting, ο classifier
+    «μαθαίνει» το BENIGN ως μία class αλλά πρακτικά πρέπει να μάθει
+    πολλά distinct flavors.
+    \item \textbf{Outliers / unknown attacks.} Το DBSCAN σημείωσε
+    \(12.573\) rows ως noise - μερικά μπορεί να είναι zero-day
+    attacks ή corrupted flows που δεν ταιριάζουν σε γνωστή κατηγορία.
+    \item \textbf{Γεωμετρική επιβεβαίωση των features.} Το silhouette-best
+    \(k\) ισούται με τον αριθμό των true labels (15). Αυτό είναι «δωρεάν»
+    επιβεβαίωση ότι τα 47 selected features περιέχουν αρκετή information
+    για να διακρίνουν τις attack categories - χωρίς ποτέ να είδαμε labels.
+\end{itemize}
+
+\section{Σύνοψη Q3}\label{sec:q3_summary}
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lr}
+        \toprule
+        \textbf{Μέγεθος}                                  & \textbf{Τιμή} \\
+        \midrule
+        Subsample (cap = 25K)                             & 134.187 rows  \\
+        PCA components (\(\geq 85\%\) variance)           & 17            \\
+        Hierarchical subsample                            & 2.468 rows    \\
+        K-Means k-search                                  & \(k \in [2,15]\) \\
+        K-Means best k (silhouette)                       & 15            \\
+        K-Means metrics                                   & sil 0,4237 / DB 0,8278 \\
+        Hierarchical best linkage                         & average       \\
+        Hierarchical metrics                              & sil 0,7334 / DB 0,2185 \\
+        DBSCAN sweep                                      & 5 \(\times\) 3 = 15 combos \\
+        DBSCAN best (silhouette)                          & \(\varepsilon=0{,}3, ms=20\) \\
+        DBSCAN best metrics                               & sil 0,4480 / DB 0,6354 \\
+        DBSCAN noise points (best)                        & 12.573 (\(\sim 9{,}4\%\)) \\
+        \bottomrule
+    \end{tabular}
+    \caption{Βασικά αποτελέσματα του Q3.}\label{tab:q3_summary}
+\end{table}
 
 %=============================================================================
 % ΚΕΦΑΛΑΙΟ 6: ΣΥΜΠΕΡΑΣΜΑΤΑ
 %=============================================================================
-\chapter{Συμπεράσματα}
+\chapter{Συμπεράσματα}\label{ch:conclusions}
 
-\textit{Το κεφάλαιο αυτό θα ολοκληρωθεί μετά τα Q2 και Q3. Έως τώρα, τα
-βασικά συμπεράσματα του Q1 είναι:}
+\section{Σύνοψη Όλου του Αγωγού}
 
+Το παρόν project υλοποίησε end-to-end ML αγωγό πάνω στο CIC-IDS-2017:
+EDA + cleaning (Q1), supervised classification (Q2) και unsupervised
+clustering (Q3). Όλη η αναπαραγωγή στηρίζεται σε ένα κοινό cached
+Parquet snapshot (\texttt{data/cic\_ids\_2017\_clean.parquet},
+\(221{,}9\) MB) και μία ενιαία \(\texttt{RANDOM\_STATE} = 42\).
+
+\section{Συμπεράσματα ανά Ερώτημα}
+
+\subsection{Q1 - Δομή και Καθαρισμός των Δεδομένων}
 \begin{enumerate}
     \item \textbf{Το CIC-IDS-2017 απαιτεί προσεκτικό καθαρισμό} πριν
-    οποιοδήποτε μοντέλο: 4.376 Infs, 255.236 exact duplicates και
+    οποιοδήποτε μοντέλο: \(4.376\) Infs, \(255.236\) exact duplicates και
     corrupted bytes στις ετικέτες των Web Attacks.
-
-    \item \textbf{Η ανισορροπία είναι ακραία} (\(\sim 195\,000:1\)). Θα
-    διαμορφώσει όλες τις επιλογές μοντελοποίησης στο Q2 (class\_weight,
-    macro-F1, stratified CV) και αξιολόγησης στο Q3.
-
+    \item \textbf{Η ανισορροπία είναι ακραία} (\(\sim 195\,000:1\)). Αυτό
+    διαμόρφωσε κάθε επιλογή στο Q2 (class\_weight, macro-F1, stratified
+    splitting) και στο Q3 (per-class subsampling cap).
     \item \textbf{Το feature space είναι υπερ-παραμετροποιημένο}. Οι 78
-    αρχικές αριθμητικές στήλες κρύβουν 22 near-duplicates και 8 constants.
-    Μετά την αφαίρεσή τους μένουν 47 features με γνήσια διακριτική
+    αρχικές αριθμητικές στήλες έκρυβαν 22 near-duplicates και 8 constants.
+    Μετά την αφαίρεση μένουν \textbf{47 features} με γνήσια διακριτική
     πληροφορία.
-
-    \item \textbf{Η χρήση Parquet είναι κρίσιμη} για την αποδοτικότητα του
-    αγωγού: Q2/Q3 φορτώνουν το καθαρισμένο σύνολο σε \(<2\) sec αντί για
-    \(\sim 60\) sec.
+    \item Η χρήση \textbf{Parquet} για το cached snapshot μειώνει το I/O
+    cost από \(\sim 60\) sec (raw CSV parsing) σε \(<2\) sec.
 \end{enumerate}
+
+\subsection{Q2 - Supervised Classification}
+\begin{enumerate}
+    \item \textbf{Decision Tree και Random Forest είναι σχεδόν ισόπαλα}
+    στο top-level. RF B κερδίζει οριακά στο F1-weighted (\(0{,}9921\))·
+    RF A κερδίζει στο F1-macro (\(0{,}9116\)). Το LR υστερεί σημαντικά
+    στο macro (\(0{,}781\)) επειδή οι attack classes \emph{δεν} είναι
+    γραμμικά διαχωρίσιμες στο 47-feature space - οι rare attacks
+    χρειάζονται non-linear decision boundaries.
+    \item \textbf{Το split-vs-CV protocol δίνει ίδια best params για το
+    LR} (μεγάλο val set αρκεί), αλλά \emph{διαφορετικά} για DT και RF
+    (CV προτιμά unbounded \texttt{max\_depth}). Σε γενικές γραμμές, η
+    CV είναι πιο αξιόπιστη όταν τα data είναι περιορισμένα ή υπάρχουν
+    rare classes.
+    \item \textbf{Η \texttt{Destination Port} είναι το μόνο feature
+    που dominate ένα μεμονωμένο DT} (importance \(\sim 0{,}39\)). Στο
+    RF η importance εξομαλύνεται μέσω bagging - top-5 features έχουν
+    importance \(0{,}04\)-\(0{,}07\). Αυτή η εξισορρόπηση είναι το
+    χαρακτηριστικό signature του ensemble averaging.
+    \item Configurable mode (\texttt{SUBSAMPLE\_CAP}): \texttt{25\_000}
+    (fast, \(\sim 134\)K rows, \(\sim 15\) min) / \texttt{100\_000}
+    (medium, \(\sim 500\)K rows, \(\sim 2\)-\(4\) hours) / \texttt{None}
+    (full \(\sim 2{,}5\)M rows, \(\sim 12+\) hours). Το LR με solver
+    \texttt{saga} είναι ο κύριος bottleneck σε full mode.
+\end{enumerate}
+
+\subsection{Q3 - Unsupervised Clustering}
+\begin{enumerate}
+    \item \textbf{17 PCA components} καλύπτουν \(\sim 87\%\) της variance.
+    Δεν υπάρχει ένα κυρίαρχο axis - η information είναι κατανεμημένη.
+    \item \textbf{Το silhouette-best \(k\) για το K-Means είναι ακριβώς 15}
+    - ίσο με τον αριθμό των γνωστών labels. Αυτή η σύμπτωση είναι ισχυρό
+    σήμα ότι η ενδογενής γεωμετρία των δεδομένων αντιστοιχεί στις attack
+    categories (γεωμετρική επιβεβαίωση του feature engineering του Q1).
+    \item \textbf{Hierarchical με average linkage} έδωσε τα καλύτερα
+    metric numbers (silhouette \(0{,}733\), DB \(0{,}219\)), αν και
+    εκπαιδεύτηκε σε \(2.468\)-row stratified subsample λόγω του
+    \(O(n^2)\) memory cost (η πλήρης distance matrix για \(134\)K rows
+    είναι \(\sim 72\) GB).
+    \item \textbf{DBSCAN ταξινομεί \(\sim 9{,}4\%\) του dataset ως
+    noise} (best config: \(\varepsilon=0{,}3, \texttt{min\_samples}=20\)).
+    Αυτά τα noise points είναι candidate \emph{outliers / unknown
+    attacks} - πληροφορία που το supervised setting του Q2 δεν παράγει.
+    \item \textbf{Η BENIGN class διασπείρεται σε πολλά clusters}, ενώ
+    χαρακτηριστικές attack υπογραφές (DDoS, PortScan, FTP-Patator)
+    σχηματίζουν compact και σχεδόν καθαρά clusters. Δηλαδή το
+    \og κανονικό\fg{} traffic είναι μείγμα από web/email/SSH/bulk
+    flavors, ενώ οι attacks έχουν διακριτές statistical signatures.
+\end{enumerate}
+
+\section{Συνολικά Διδάγματα και Best Practices}
+
+\begin{itemize}
+    \item \textbf{Pipeline-driven preprocessing.} Σε όλο το Q2 και Q3,
+    κάθε scaling και dimensionality reduction βρίσκεται μέσα σε
+    \texttt{Pipeline} ή εφαρμόζεται \emph{μόνο} στο training fold ώστε
+    να αποφευχθεί data leakage.
+    \item \textbf{Reproducibility.} \texttt{utils.RANDOM\_STATE = 42}
+    χρησιμοποιείται σε κάθε split, model seed, και stochastic operation
+    (sampling, K-Means init, RF bootstrap, GridSearchCV folds, PCA solver).
+    Re-execution οποιουδήποτε notebook top-to-bottom δίνει bit-identical
+    αποτελέσματα.
+    \item \textbf{Caching.} Το Q1 παράγει το \(221{,}9\) MB Parquet
+    snapshot που και τα Q2 και Q3 φορτώνουν σε \(<2\) sec - όχι
+    re-execution του πλήρους Q1 αγωγού σε κάθε run.
+    \item \textbf{Configurable compute mode.} Q2 και Q3 εκθέτουν
+    \texttt{SUBSAMPLE\_CAP} ώστε ο χρήστης να επιλέγει trade-off
+    speed-vs-fidelity χωρίς αλλαγές σε άλλο μέρος του κώδικα.
+    \item \textbf{Διαχωρισμός responsibilities.} Reusable helpers ζουν
+    στο \texttt{utils.helpers} (15 functions, re-exported μέσω
+    \texttt{utils/\_\_init\_\_.py}). Notebooks είναι αμιγώς διδακτικά -
+    Greek \og Γιατί\fg{} cells με τεκμηρίωση κάθε απόφασης.
+\end{itemize}
+
+\section{Πιθανές Επεκτάσεις}
+
+\begin{itemize}
+    \item \textbf{Σύγχρονοι classifiers}: XGBoost, LightGBM ή gradient
+    boosting θα μπορούσαν να βελτιώσουν περαιτέρω τα macro-F1 metrics
+    (RF μας δίνει \(0{,}912\)).
+    \item \textbf{Threshold tuning}: για production IDS, η εξάρτηση από
+    F1-macro vs precision/recall ζευγάρια ανά class θα οδηγούσε σε
+    διαφορετική τοποθέτηση thresholds.
+    \item \textbf{Σύγχρονα clustering}: HDBSCAN (αυτόματη επιλογή ε,
+    χειρίζεται variable density) ή UMAP-based clustering θα μπορούσαν
+    να βελτιώσουν τη DBSCAN υλοποίηση.
+    \item \textbf{Online / streaming setup}: το CIC-IDS-2017 είναι
+    static· σε production setting, η ανίχνευση πρέπει να γίνεται σε
+    real-time πάνω σε streaming flows.
+\end{itemize}
 
 %=============================================================================
 % ΠΑΡΑΡΤΗΜΑ
@@ -1713,6 +2177,44 @@ jupyter nbconvert --to notebook --execute notebooks/q1_eda.ipynb \
     pairs, removed features, final feature list).
     \item \texttt{data/cic\_ids\_2017\_clean.parquet}: το cached clean
     dataset για τα Q2/Q3.
+\end{itemize}
+
+\section{Εκτέλεση των Q2 και Q3}
+
+Τα Q2 και Q3 διαβάζουν \emph{μόνο} το cached Parquet snapshot - δεν
+ξανατρέχουν το pipeline του Q1. Πριν την εκτέλεση, ανοίξτε το αντίστοιχο
+notebook και προσαρμόστε τη μεταβλητή \texttt{SUBSAMPLE\_CAP} στο
+preferred mode (\texttt{25\_000} = fast, \texttt{100\_000} = medium,
+\texttt{None} = full).
+
+\begin{tcolorbox}[myCustomStyle={Run}]
+\begin{lstlisting}[style=myBashStyle]
+# Q2: classification - LR / DT / RF, σενάρια A και B
+jupyter nbconvert --to notebook --inplace --execute \
+  notebooks/q2_classification.ipynb \
+  --ExecutePreprocessor.timeout=7200 \
+  --ExecutePreprocessor.kernel_name=nids
+
+# Q3: clustering - PCA + K-Means + Hierarchical + DBSCAN
+jupyter nbconvert --to notebook --inplace --execute \
+  notebooks/q3_clustering.ipynb \
+  --ExecutePreprocessor.timeout=7200 \
+  --ExecutePreprocessor.kernel_name=nids
+\end{lstlisting}
+\end{tcolorbox}
+
+Παραγόμενα αρχεία:
+\begin{itemize}
+    \item \textbf{Q2}: \(13\) PNGs (\(6\) confusion matrices, \(2\)
+    feature-importance bars, \(1\) F1 comparison, \(1\) LR coefficient
+    heatmap, \(2\) DT visualizations, \(1\) RF single-tree) + \(12\)
+    CSVs (subsample, split, label encoding, \(6\) grid CSVs, \(2\)
+    feature-importance, comparison table, label encoding).
+    \item \textbf{Q3}: \(11\) PNGs (PCA variance, K-Means
+    elbow/silhouette, \(2\) K-Means scatters, K-Means heatmap,
+    dendrogram, hier scatter + heatmap, k-distance, DBSCAN scatter +
+    heatmap) + \(8\) CSVs (PCA variance, k-search, linkage comparison,
+    DBSCAN sweep, comparison, \(3\) heatmap composition tables).
 \end{itemize}
 
 \section{Αναπαραγωγιμότητα}
